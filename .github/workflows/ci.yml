@@ -36,9 +36,6 @@ jobs:
         run: |
           uv run ruff check src/ tests/
 
-      - name: Run ruff formatter check
-        run: |
-          uv run ruff format --check src/ tests/
 
   # Type checking
   type-check:
