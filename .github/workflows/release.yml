@@ -59,6 +59,9 @@ jobs:
         uses: pypa/gh-action-pypi-publish@release/v1
         with:
           password: ${{ secrets.PYPI_API_TOKEN }}
+          # 取消下面两行注释可以发布到 TestPyPI 进行测试
+          # repository-url: https://test.pypi.org/legacy/
+          # password: ${{ secrets.TEST_PYPI_API_TOKEN }}
 
   github-release:
     name: Create GitHub Release
