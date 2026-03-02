@@ -265,9 +265,9 @@ class PreprocessingPipeline:
 
         # Validate parameters
         nyquist = sfreq / 2
-        assert (
-            lowpass < nyquist
-        ), f"Lowpass frequency ({lowpass} Hz) must be less than Nyquist frequency ({nyquist} Hz)."
+        assert lowpass < nyquist, (
+            f"Lowpass frequency ({lowpass} Hz) must be less than Nyquist frequency ({nyquist} Hz)."
+        )
         assert highpass < lowpass, (
             f"Highpass frequency ({highpass} Hz) must be less than "
             f"lowpass frequency ({lowpass} Hz)."
