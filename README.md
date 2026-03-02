@@ -1,8 +1,8 @@
 # meeg-utils
 
-[![CI](https://github.com/yourusername/meeg-utils/workflows/CI/badge.svg)](https://github.com/yourusername/meeg-utils/actions)
-[![Documentation](https://github.com/yourusername/meeg-utils/workflows/Documentation/badge.svg)](https://yourusername.github.io/meeg-utils/)
-[![codecov](https://codecov.io/gh/yourusername/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/meeg-utils)
+[![CI](https://github.com/colehank/meeg-utils/workflows/CI/badge.svg)](https://github.com/colehank/meeg-utils/actions)
+[![Documentation](https://github.com/colehank/meeg-utils/workflows/Documentation/badge.svg)](https://colehank.github.io/meeg-utils/)
+[![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
 [![PyPI version](https://badge.fury.io/py/meeg-utils.svg)](https://badge.fury.io/py/meeg-utils)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -69,20 +69,20 @@ batch.run(detect_bad_channels=True, remove_line_noise=True, apply_ica=True)
 
 ## 📚 Documentation
 
-**Full documentation:** https://yourusername.github.io/meeg-utils/
+**Full documentation:** https://colehank.github.io/meeg-utils/
 
-- [Installation Guide](https://yourusername.github.io/meeg-utils/user_guide/installation.html)
-- [Quick Start](https://yourusername.github.io/meeg-utils/user_guide/quickstart.html)
-- [Preprocessing Guide](https://yourusername.github.io/meeg-utils/user_guide/preprocessing.html)
-- [Batch Processing](https://yourusername.github.io/meeg-utils/user_guide/batch_processing.html)
-- [API Reference](https://yourusername.github.io/meeg-utils/api/preprocessing.html)
-- [Contributing Guide](https://yourusername.github.io/meeg-utils/developer/contributing.html)
+- [Installation Guide](https://colehank.github.io/meeg-utils/user_guide/installation.html)
+- [Quick Start](https://colehank.github.io/meeg-utils/user_guide/quickstart.html)
+- [Preprocessing Guide](https://colehank.github.io/meeg-utils/user_guide/preprocessing.html)
+- [Batch Processing](https://colehank.github.io/meeg-utils/user_guide/batch_processing.html)
+- [API Reference](https://colehank.github.io/meeg-utils/api/preprocessing.html)
+- [Contributing Guide](https://colehank.github.io/meeg-utils/developer/contributing.html)
 
 ## 🛠️ Development
 
 ```bash
 # Clone and setup
-git clone https://github.com/yourusername/meeg-utils.git
+git clone https://github.com/colehank/meeg-utils.git
 cd meeg-utils
 uv sync --dev
 uv run pre-commit install
@@ -94,7 +94,7 @@ uv run pytest
 cd docs && uv run make html
 ```
 
-See the [Contributing Guide](https://yourusername.github.io/meeg-utils/developer/contributing.html) for detailed development instructions.
+See the [Contributing Guide](https://colehank.github.io/meeg-utils/developer/contributing.html) for detailed development instructions.
 
 ## 📄 License
 
@@ -106,6 +106,6 @@ Built on the excellent [MNE-Python](https://mne.tools/) ecosystem.
 
 ## 📞 Support
 
-- 📖 [Documentation](https://yourusername.github.io/meeg-utils/)
-- 🐛 [Issue Tracker](https://github.com/yourusername/meeg-utils/issues)
-- 💬 [Discussions](https://github.com/yourusername/meeg-utils/discussions)
+- 📖 [Documentation](https://colehank.github.io/meeg-utils/)
+- 🐛 [Issue Tracker](https://github.com/colehank/meeg-utils/issues)
+- 💬 [Discussions](https://github.com/colehank/meeg-utils/discussions)
