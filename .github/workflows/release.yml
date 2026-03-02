@@ -47,8 +47,6 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/meeg-utils
-    permissions:
-      id-token: write
 
     steps:
       - name: Download all the dists
@@ -59,6 +57,8 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
 
   github-release:
     name: Create GitHub Release
