@@ -1,0 +1,193 @@
+[project]
+name = "meeg-utils"
+version = "0.1.0"
+description = "A Python-based MEEG processing toolkit primarily based on MNE-Python."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+    { name = "Your Name", email = "your.email@example.com" }
+]
+keywords = ["MEG", "EEG", "MEEG", "neuroscience", "preprocessing", "MNE-Python"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "loguru>=0.7.3",
+    "meegkit>=0.1.9",
+    "mne>=1.11.0",
+    "mne-bids>=0.18.0",
+    "mne-icalabel>=0.8.1",
+    "onnxruntime>=1.24.2",
+    "pyprep>=0.6.0",
+]
+
+[dependency-groups]
+dev = [
+    # Testing
+    "pybv>=0.7.6",
+    "pytest>=9.0.2",
+    "pytest-cov>=7.0.0",
+    "pytest-mock>=3.15.1",
+    # Code quality
+    "ruff>=0.8.0",
+    "mypy>=1.14.0",
+    "bandit>=1.8.0",
+    "interrogate>=1.7.0",
+    "pre-commit>=4.0.0",
+    # Documentation
+    "sphinx>=8.1.3",
+    "pydata-sphinx-theme>=0.16.1",
+    "sphinx-copybutton>=0.5.2",
+    "myst-parser>=4.0.0",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/meeg_utils"]
+
+[tool.pytest.ini_options]
+filterwarnings = [
+    # Ignore BIDS conversion warnings (expected behavior)
+    "ignore:Converting data files to BrainVision format:RuntimeWarning",
+    "ignore:Encountered data in \"double\" format:RuntimeWarning",
+    "ignore:No events found or provided:RuntimeWarning",
+    "ignore:Did not find any events.tsv:RuntimeWarning",
+    # Ignore ICLabel/MEGnet design warnings (library recommendations, not errors)
+    "ignore:The provided Raw instance does not seem to be referenced to a common average reference:RuntimeWarning",
+    "ignore:The provided Raw instance is not filtered between 1 and 100 Hz:RuntimeWarning",
+    "ignore:The provided raw instance is not filtered between 1 and 100 Hz:RuntimeWarning",
+    "ignore:The provided raw instance is not sampled at 250 Hz:RuntimeWarning",
+    "ignore:The provided ICA instance has .* components:RuntimeWarning",
+    "ignore:The provided ICA instance was fitted with a .* algorithm:RuntimeWarning",
+]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--strict-markers",
+    "--strict-config",
+    "--color=yes",
+]
+
+# Coverage configuration
+[tool.coverage.run]
+source = ["src"]
+branch = true
+omit = [
+    "*/tests/*",
+    "*/__init__.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+    "@abstractmethod",
+]
+precision = 2
+show_missing = true
+
+# Ruff configuration
+[tool.ruff]
+target-version = "py311"
+line-length = 100
+indent-width = 4
+
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E",      # pycodestyle errors
+    "W",      # pycodestyle warnings
+    "F",      # pyflakes
+    "I",      # isort
+    "B",      # flake8-bugbear
+    "C4",     # flake8-comprehensions
+    "UP",     # pyupgrade
+    "ARG",    # flake8-unused-arguments
+    "SIM",    # flake8-simplify
+    "PL",     # pylint
+    "RUF",    # ruff-specific rules
+]
+ignore = [
+    "E501",    # line too long (handled by formatter)
+    "PLR0913", # too many arguments
+    "PLR2004", # magic value comparison
+    "PLC0415", # import outside top-level (used for optional imports)
+    "B904",    # raise without from (prefer simple error messages)
+    "ARG002",  # unused method argument (used for API consistency)
+    "C408",    # dict() call (dict literals less readable sometimes)
+    "SIM102",  # nested if (more readable sometimes)
+    "SIM105",  # use contextlib.suppress (explicit try-except clearer)
+    "RUF005",  # concatenation vs unpacking (concatenation clearer)
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*" = ["ARG", "PLR2004"]
+"__init__.py" = ["F401"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+line-ending = "auto"
+
+# MyPy configuration
+[tool.mypy]
+python_version = "3.11"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+check_untyped_defs = true
+no_implicit_optional = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+warn_no_return = true
+strict_equality = true
+
+[[tool.mypy.overrides]]
+module = [
+    "mne.*",
+    "mne_bids.*",
+    "mne_icalabel.*",
+    "meegkit.*",
+    "pyprep.*",
+]
+ignore_missing_imports = true
+
+# Bandit configuration
+[tool.bandit]
+exclude_dirs = ["tests", "scripts"]
+skips = ["B101"]  # Skip assert_used in tests
+
+# Interrogate configuration
+[tool.interrogate]
+ignore-init-method = true
+ignore-init-module = true
+ignore-magic = true
+ignore-semiprivate = true
+ignore-private = true
+ignore-property-decorators = true
+ignore-module = true
+ignore-nested-functions = true
+fail-under = 80
+exclude = ["setup.py", "docs", "build", "tests"]
+verbose = 1
+quiet = false
+color = true
