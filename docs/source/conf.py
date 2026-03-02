@@ -34,7 +34,7 @@ html_static_path = ["_static"]
 html_title = "meeg-utils"
 
 html_theme_options = {
-    "github_url": "https://github.com/yourusername/meeg-utils",
+    "github_url": "https://github.com/colehank/meeg-utils",
     "use_edit_page_button": True,
     "show_toc_level": 2,
     "navbar_align": "content",
@@ -48,7 +48,7 @@ html_theme_options = {
 }
 
 html_context = {
-    "github_user": "yourusername",
+    "github_user": "colehank",
     "github_repo": "meeg-utils",
     "github_version": "main",
     "doc_path": "docs/source",

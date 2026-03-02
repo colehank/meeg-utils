@@ -141,6 +141,6 @@ Add to README.md:
 
 .. code-block:: markdown
 
-   [![CI](https://github.com/yourusername/meeg-utils/workflows/CI/badge.svg)](https://github.com/yourusername/meeg-utils/actions)
-   [![codecov](https://codecov.io/gh/yourusername/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/yourusername/meeg-utils)
+   [![CI](https://github.com/colehank/meeg-utils/workflows/CI/badge.svg)](https://github.com/colehank/meeg-utils/actions)
+   [![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
    [![PyPI version](https://badge.fury.io/py/meeg-utils.svg)](https://badge.fury.io/py/meeg-utils)

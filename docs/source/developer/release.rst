@@ -106,7 +106,7 @@ GitHub Actions will automatically:
 2. Publish to PyPI
 3. Create GitHub Release
 
-Monitor progress at: ``https://github.com/yourusername/meeg-utils/actions``
+Monitor progress at: ``https://github.com/colehank/meeg-utils/actions``
 
 8. Verify Release
 ~~~~~~~~~~~~~~~~~
@@ -118,7 +118,7 @@ Monitor progress at: ``https://github.com/yourusername/meeg-utils/actions``
    python -c "import meeg_utils; print(meeg_utils.__version__)"
 
    # Check GitHub Release
-   # Visit: https://github.com/yourusername/meeg-utils/releases
+   # Visit: https://github.com/colehank/meeg-utils/releases
 
 Manual Release (if needed)
 ---------------------------

@@ -51,7 +51,7 @@ def detect_bad_channels_eeg(
         except Exception as e:
             logger.warning(f"RANSAC-based detection failed: {e}")
 
-        bad_channels = finder.get_bads()
+        bad_channels = list(finder.get_bads())
 
     except Exception as e:
         logger.error(f"PREP pipeline failed: {e}. Returning empty bad channels list.")

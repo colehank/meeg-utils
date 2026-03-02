@@ -30,7 +30,7 @@ For development or latest features:
 .. code-block:: bash
 
    # Clone repository
-   git clone https://github.com/yourusername/meeg-utils.git
+   git clone https://github.com/colehank/meeg-utils.git
    cd meeg-utils
 
    # Install with uv (recommended for development)

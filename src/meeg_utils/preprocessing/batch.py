@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed  # type: ignore[import-untyped]
 from loguru import logger
 from mne_bids import BIDSPath
 
@@ -204,6 +204,8 @@ class BatchPreprocessingPipeline:
         # Setup log file if requested
         log_file_handler = None
         if save_logs:
+            if self.output_dir is None:
+                raise ValueError("output_dir must be set when save_logs=True")
             log_file = self.output_dir / "batch_preprocessing.log"
             log_file_handler = logger.add(
                 log_file,

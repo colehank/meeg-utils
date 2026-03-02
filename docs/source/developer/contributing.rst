@@ -20,7 +20,7 @@ Installation
 
 .. code-block:: bash
 
-   git clone https://github.com/yourusername/meeg-utils.git
+   git clone https://github.com/colehank/meeg-utils.git
    cd meeg-utils
 
 2. Install dependencies:
@@ -248,7 +248,7 @@ Feature requests are welcome! Please:
 Questions?
 ----------
 
-* Open a `GitHub Discussion <https://github.com/yourusername/meeg-utils/discussions>`_
+* Open a `GitHub Discussion <https://github.com/colehank/meeg-utils/discussions>`_
 * Check the documentation
 
 License

@@ -516,7 +516,13 @@ class PreprocessingPipeline:
             self.apply_ica(**ica_params)
 
         # Re-reference EEG after ICA if regressed
-        if apply_ica and ica_params.get("regress", False) and self.datatype == "eeg":
+        if (
+            apply_ica
+            and ica_params is not None
+            and ica_params.get("regress", False)
+            and self.datatype == "eeg"
+            and self.raw is not None
+        ):
             logger.info("Re-referencing EEG after ICA regression.")
             self.raw.set_eeg_reference("average", verbose=False)
 
@@ -526,6 +532,9 @@ class PreprocessingPipeline:
 
     def _apply_reference(self) -> None:
         """Apply appropriate reference for the datatype."""
+        if self.raw is None:
+            raise ValueError("Data not loaded. Call load_data() first.")
+
         if self.datatype == "eeg":
             logger.info("Applying average reference for EEG.")
             self.raw.set_eeg_reference("average", verbose=False)
@@ -544,6 +553,9 @@ class PreprocessingPipeline:
         if self.raw is None:
             raise ValueError("No data to save. Run pipeline first.")
 
+        if self.datatype is None:
+            raise ValueError("Datatype not set. Load data first.")
+
         # Create output directory
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -556,8 +568,10 @@ class PreprocessingPipeline:
                 subdir = self.output_dir / f"sub-{subject}" / f"ses-{session}" / self.datatype
                 subdir.mkdir(parents=True, exist_ok=True)
                 filename = subdir / f"{basename}_preproc_{self.datatype}.fif"
-            else:
+            elif self.input_path is not None:
                 filename = self.output_dir / f"{self.input_path.stem}_preproc_{self.datatype}.fif"
+            else:
+                filename = self.output_dir / f"preprocessed_{self.datatype}.fif"
         else:
             filename = Path(filename)
             filename.parent.mkdir(parents=True, exist_ok=True)
@@ -571,9 +585,12 @@ class PreprocessingPipeline:
         if not hasattr(self, "output_dir"):
             return
 
+        if self.raw is None or self.datatype is None:
+            return
+
         import json
 
-        import pandas as pd
+        import pandas as pd  # type: ignore[import-untyped]
 
         # Create filename
         if self.input_path is None:
