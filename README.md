@@ -8,16 +8,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-> A Python-based MEG/EEG preprocessing toolkit built on MNE-Python, providing a high-level, user-friendly API for preprocessing electrophysiological data.
+> A Python-based MEG/EEG processing toolkit built on MNE-Python, providing a high-level, user-friendly API for preprocessing electrophysiological data.
 
 ## 🌟 Features
-
-- **High-level API** - Simple, intuitive interface for complex preprocessing pipelines
-- **BIDS Support** - Native Brain Imaging Data Structure (BIDS) support
-- **Advanced Preprocessing** - Bad channel detection, line noise removal, ICA-based artifact removal
-- **Batch Processing** - Efficient parallel processing of multiple datasets
-- **Type-safe** - Full type hints for better IDE support
-- **Well-tested** - Comprehensive test suite (52 tests, >80% coverage, 0 warnings)
+### Preprocessing
+high-level API for auto preprocessing
 
 ## 📦 Installation
 
