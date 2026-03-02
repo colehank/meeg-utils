@@ -2,7 +2,6 @@
 
 [![CI](https://github.com/colehank/meeg-utils/workflows/CI/badge.svg)](https://github.com/colehank/meeg-utils/actions)
 [![Documentation](https://github.com/colehank/meeg-utils/workflows/Documentation/badge.svg)](https://colehank.github.io/meeg-utils/)
-[![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
 [![PyPI version](https://badge.fury.io/py/meeg-utils.svg)](https://badge.fury.io/py/meeg-utils)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
