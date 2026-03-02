@@ -8,11 +8,17 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 
-> A Python-based MEG/EEG processing toolkit built on MNE-Python, providing a high-level, user-friendly API for preprocessing electrophysiological data.
+> A Python-based MEG/EEG processing toolkit built on MNE-Python, providing a high-level, user-friendly API for processing MEG/EEG data.
 
-## 🌟 Features
+## Features
 ### Preprocessing
-high-level API for auto preprocessing
+*Epoching In Progress*
+- High-level `PreprocessingPipeline` class for streamlined MEG/EEG preprocessing.
+![Pipeline Diagram](resources/preprocessing_pipeline.png)
+
+### Feature Extraction
+*In Progress*
+- Common MEG/EEG features (e.g., power spectral density, connectivity metrics).
 
 ## 📦 Installation
 
