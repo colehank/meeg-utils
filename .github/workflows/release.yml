@@ -47,6 +47,8 @@ jobs:
     environment:
       name: pypi
       url: https://pypi.org/p/meeg-utils
+    permissions:
+      id-token: write  # 用于 Trusted Publishers (OIDC)
 
     steps:
       - name: Download all the dists
@@ -57,11 +59,7 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          # 取消下面两行注释可以发布到 TestPyPI 进行测试
-          # repository-url: https://test.pypi.org/legacy/
-          # password: ${{ secrets.TEST_PYPI_API_TOKEN }}
+        # 使用 Trusted Publishers 时不需要提供 password
 
   github-release:
     name: Create GitHub Release
