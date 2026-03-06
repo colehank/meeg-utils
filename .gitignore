@@ -72,6 +72,8 @@ dmypy.json
 # Project specific
 .claude
 derivatives/
+.log/
+*.log
 *.fif
 *.vhdr
 *.vmrk

@@ -91,7 +91,6 @@ class BatchPreprocessingPipeline:
         ica_params: dict | None,
         save_intermediate: bool,
         skip_existing: bool,
-        logging_level: str,
     ) -> None:
         """Process a single dataset.
 
@@ -102,15 +101,6 @@ class BatchPreprocessingPipeline:
             if self._check_output_exists(input_path):
                 logger.info(f"Skipping {input_path} (output already exists)")
                 return
-
-        # Set up logging for this worker
-        # (In parallel mode, each worker should have its own log config)
-        logger.remove()  # Remove default handler
-        logger.add(
-            lambda msg: print(msg, end=""),
-            level=logging_level,
-            format="<level>{message}</level>",
-        )
 
         try:
             # Create pipeline for this dataset
@@ -171,10 +161,10 @@ class BatchPreprocessingPipeline:
         remove_line_noise: bool = True,
         apply_ica: bool = True,
         ica_params: dict | None = None,
-        save_intermediate: bool = True,
+        save_intermediate: bool = False,
         skip_existing: bool = False,
-        logging_level: str = "INFO",
         save_logs: bool = False,
+        logging_level: str = "INFO",
     ) -> None:
         """Run batch preprocessing on all datasets.
 
@@ -191,29 +181,34 @@ class BatchPreprocessingPipeline:
         ica_params : dict | None, optional
             ICA parameters.
         save_intermediate : bool, optional
-            Whether to save intermediate files. Default is True.
+            Whether to save intermediate files. Default is False.
         skip_existing : bool, optional
             Whether to skip datasets with existing output. Default is False.
-        logging_level : str, optional
-            Logging level. Default is "INFO".
         save_logs : bool, optional
             Whether to save log files. Default is False.
+        logging_level : str, optional
+            Logging level for the batch process. Default is "INFO".
         """
-        logger.info(f"Starting batch preprocessing of {len(self.input_paths)} datasets...")
+        # Setup logging if requested
+        if save_logs and self.output_dir:
+            from datetime import datetime
 
-        # Setup log file if requested
-        log_file_handler = None
-        if save_logs:
-            if self.output_dir is None:
-                raise ValueError("output_dir must be set when save_logs=True")
-            log_file = self.output_dir / "batch_preprocessing.log"
-            log_file_handler = logger.add(
-                log_file,
-                rotation=None,
-                level=logging_level,
-                format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
+            from ..logger import setup_logging
+
+            # Create log directory in output
+            log_dir = self.output_dir / "logs"
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_filename = f"batch_preprocessing_{timestamp}.log"
+
+            setup_logging(
+                stdout_level=logging_level,
+                file_level="DEBUG",
+                enable_file_logging=True,
+                log_filename=log_filename,
+                log_dir=log_dir,
             )
-            logger.info(f"Logging to file: {log_file}")
+
+        logger.info(f"Starting batch preprocessing of {len(self.input_paths)} datasets...")
 
         if self.n_jobs == 1:
             # Sequential processing
@@ -227,7 +222,6 @@ class BatchPreprocessingPipeline:
                     ica_params=ica_params,
                     save_intermediate=save_intermediate,
                     skip_existing=skip_existing,
-                    logging_level=logging_level,
                 )
         else:
             # Parallel processing
@@ -243,17 +237,8 @@ class BatchPreprocessingPipeline:
                     ica_params=ica_params,
                     save_intermediate=save_intermediate,
                     skip_existing=skip_existing,
-                    logging_level=logging_level,
                 )
                 for input_path in self.input_paths
             )
 
         logger.success(f"Batch preprocessing completed for {len(self.input_paths)} datasets!")
-
-        # Remove log file handler if it was added
-        if save_logs and log_file_handler is not None:
-            try:
-                logger.remove(log_file_handler)
-            except ValueError:
-                # Handler may have already been removed
-                pass

@@ -463,6 +463,7 @@ class PreprocessingPipeline:
         remove_line_noise: bool = True,
         apply_ica: bool = True,
         ica_params: dict | None = None,
+        save_intermediate: bool = False,
     ) -> BaseRaw:
         """Run complete preprocessing pipeline.
 
@@ -479,7 +480,7 @@ class PreprocessingPipeline:
         ica_params : dict | None, optional
             ICA parameters. Keys: n_components, method, regress.
         save_intermediate : bool, optional
-            Whether to save intermediate files. Default is True.
+            Whether to save intermediate files. Default is False.
 
         Returns
         -------
