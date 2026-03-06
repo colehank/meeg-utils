@@ -163,7 +163,7 @@ class BatchPreprocessingPipeline:
         ica_params: dict | None = None,
         save_intermediate: bool = False,
         skip_existing: bool = False,
-        save_logs: bool = False,
+        save_logs: bool = True,
         logging_level: str = "INFO",
     ) -> None:
         """Run batch preprocessing on all datasets.
@@ -185,7 +185,7 @@ class BatchPreprocessingPipeline:
         skip_existing : bool, optional
             Whether to skip datasets with existing output. Default is False.
         save_logs : bool, optional
-            Whether to save log files. Default is False.
+            Whether to save log files. Default is True.
         logging_level : str, optional
             Logging level for the batch process. Default is "INFO".
         """
