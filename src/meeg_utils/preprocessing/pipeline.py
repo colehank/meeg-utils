@@ -398,7 +398,7 @@ class PreprocessingPipeline:
         self,
         n_components: int | None = None,
         method: str = "infomax",
-        regress: bool = False,
+        regress: bool = True,
         manual_labels: list[str] | None = None,
     ) -> BaseRaw:
         """Apply ICA for artifact removal.
@@ -463,7 +463,6 @@ class PreprocessingPipeline:
         remove_line_noise: bool = True,
         apply_ica: bool = True,
         ica_params: dict | None = None,
-        save_intermediate: bool = True,
     ) -> BaseRaw:
         """Run complete preprocessing pipeline.
 
@@ -562,7 +561,7 @@ class PreprocessingPipeline:
         # Generate filename if not provided
         if filename is None:
             if isinstance(self.input_path, BIDSPath):
-                basename = self.input_path.basename
+                basename = self.input_path.basename.split(".")[0]
                 subject = self.input_path.subject
                 session = self.input_path.session
                 subdir = self.output_dir / f"sub-{subject}" / f"ses-{session}" / self.datatype
