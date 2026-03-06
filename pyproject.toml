@@ -1,6 +1,6 @@
 [project]
 name = "meeg-utils"
-version = "0.1.4"
+version = "0.1.5"
 description = "A Python-based MEEG processing toolkit primarily based on MNE-Python."
 readme = "README.md"
 requires-python = ">=3.11"
