@@ -187,7 +187,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 
 | 类型 | 目的 | 规则 |
 |---|---|---|
-| **复现型**（如 `had-meeg`、`nod-meeg`） | 逐步复现已发表数据集的预处理 | 参数和步骤严格按原代码；已知问题写进文档并在运行时警告，**不悄悄修正**；用原版本号标注 |
+| **数据集型**（如 `had-meeg`、`nod-meeg`） | 以已发表数据集的预处理为蓝本 | 沿用原流程的步骤和参数，但**已知问题一律修正**；每处与原代码不同的地方都在预设文档中逐条列出（原做法、问题、修正、依据） |
 | **推荐型**（如 `eeg-erp`、`meg-erp`、`eeg-rest`、`meg-rest`） | 本库推荐的默认流程 | 每个参数都要能追溯到文献或权威流程的默认值，在文档中逐条注明出处 |
 
 推荐型预设的参考来源（逐条核对后再采用）：MNE-BIDS-Pipeline 的默认配置、Jas et al. 2018（*Frontiers in Neuroscience*，MNE 组分析可复现示例）、FLUX（Ferrante et al. 2022，MEG 流程）、PREP（Bigdely-Shamlo et al. 2015）、ICLabel（Pion-Tonachini et al. 2019）的输入要求、ZapLine-plus（Klug & Kloosterman 2022）。
@@ -267,7 +267,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 
 | 阶段 | 内容 |
 |---|---|
-| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 复现型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
+| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
 | **P1 质量检查** | `qc` 模块、mne.Report、数据集 QC 汇总表 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、`epochs` 模块、L3 `Dataset` / `BatchRunner` |
 | **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS；`group` 模块；`meu` 命令行 |
@@ -279,4 +279,4 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 - [x] 多 run：默认按单个 run 处理，跨 run 只统一通道集合和 MEG 头位置（§4.5）。
 - [x] 组水平：支持，新增 `group` 模块。
 - [x] 命令行：`meu`；缩写风格统一为 `meu`。
-- [ ] 复现型预设 `had-meeg`：审查中发现的问题，是在新版本中修正（并发布更正说明），还是保持原样只做警告。
+- [x] 数据集型预设：只提供修正后的版本，与原代码的差异逐条记录在预设文档中。
