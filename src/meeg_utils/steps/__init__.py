@@ -5,6 +5,7 @@ from __future__ import annotations
 from .autoreject import AutoReject
 from .bridging import BridgedElectrodes
 from .channels import BadChannels, Interpolate, Reference
+from .compose import ByChannelType
 from .epochs import Baseline, DropChannels, Epoch
 from .filtering import Filter, Resample
 from .head import HeadAlign
@@ -18,6 +19,7 @@ __all__ = [
     "BadChannels",
     "Baseline",
     "BridgedElectrodes",
+    "ByChannelType",
     "DropChannels",
     "Epoch",
     "Filter",

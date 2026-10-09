@@ -27,6 +27,13 @@ Added
   ``steps.AutoReject`` (autoreject), and ``meu.epochs.combine`` for runs.
 * ``Pipeline.preset("had-meeg", stage="epochs")``: the corrected HAD-MEEG
   epoching stage.
+* ``steps.Maxwell``: SSS / tSSS for Neuromag data with cross-talk and
+  fine-calibration files from BIDS, movement compensation from cHPI (coil
+  signals removed), and a destination head position.
+* ``steps.ByChannelType``: separate steps per channel type (e.g. MEG and
+  EEG), with nested parameters (``by_type__eeg__ica__n_components``).
+* Figures that exist only for some fits (e.g. head movement) are left out
+  of ``plot()`` and explain why when requested.
 
 [0.2.0]
 -------

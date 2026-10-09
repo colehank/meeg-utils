@@ -59,7 +59,7 @@
 | `clone` | 批处理时每个被试拿到一份干净的流程副本 |
 | `joblib.Memory` | 缓存耗时步骤（ICA、PREP） |
 | `check_estimator` 契约测试 | 对每个 Step 自动检查 §2 的硬约束 |
-| `ColumnTransformer` | `ByChannelType({"meg": [...], "eeg": [...]})`：混合采集时按通道类型分支 |
+| `ColumnTransformer` | `ByChannelType({"meg": [...], "eeg": [...]})`：混合采集时按通道类型分支（已实现）。每个分支在只含本类型通道的副本上运行，结果写回原对象；分支内的步骤不得改变通道或时间轴 |
 
 实现上，Step 继承 `sklearn.base.BaseEstimator`，直接获得 `get_params`、`set_params`、`clone`、`repr`（scikit-learn 本来就是 MNE 和 mne-denoise 的依赖）。**Pipeline 自己实现，不用 sklearn 的 Pipeline。**
 
@@ -159,7 +159,7 @@ meu preset had-meeg --datatype meg > config.yaml
 但 run 之间有两件事必须统一，放在分段（`epochs`）和组水平之前，由专门的 Step 负责，不混进单 run 流程：
 
 1. **通道集合一致。** 合并各 run 的 epochs 前，坏道取各 run 的并集，或者全部插值后对齐通道顺序。
-2. **MEG 头位置对齐。** 把所有 run 变换到同一个目标头位置。`S.HeadAlign(destination=...)` 用最小范数场映射（Knösche, 2002）计算传感器在目标头位置下应测到的信号，适用于有 `dev_head_t` 的所有 MEG 系统（OPM 除外）；Neuromag 也可以用 `maxwell_filter(destination=...)`（P2 的 `Maxwell` Step）。目标位置通常取各 run 的平均：
+2. **MEG 头位置对齐。** 把所有 run 变换到同一个目标头位置。`S.HeadAlign(destination=...)` 用最小范数场映射（Knösche, 2002）计算传感器在目标头位置下应测到的信号，适用于有 `dev_head_t` 的所有 MEG 系统（OPM 除外）；Neuromag 也可以用 `S.Maxwell(destination=...)`，在 Maxwell 滤波的同时完成对齐。目标位置通常取各 run 的平均：
 
    ```python
    dest = meu.io.average_dev_head_t(runs)          # 按各 run 非 BAD 时长加权平均
@@ -210,7 +210,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 | `preprocessing` | `Filter`、`Resample` | mne |
 | | `LineNoise(method=zapline \| zapline-plus \| notch \| spectrum-interpolation)` | **mne-denoise**（ZapLine、ZapLine-plus、SpectrumInterpolation），mne（notch） |
 | | `BadChannels(method=auto \| prep \| maxwell \| ...)` | pyprep, mne |
-| | `Maxwell(st_duration=..., head_pos=...)` | mne |
+| | `Maxwell(st_duration=..., head_pos="chpi", destination=...)`（已实现）：仿真中外部干扰为脑信号 10 倍时，MAG 误差从 1000% 降到 6%（与无干扰时 SSS 本身的重建误差相同）；分段头动（最大 9 mm / 4°）的误差从 17–25% 降到 7–9%；头皮外近传感器的伪迹 SSS 去不掉（误差 > 300%），tSSS 降到 < 60% | mne |
 | | `HeadAlign(destination=...)`（跨 run 头位置对齐） | mne（场映射） |
 | | `HFC`（OPM）、`RefRegression`（KIT） | mne |
 | | `BadSegments(method=amplitude \| muscle \| asr)` | mne，**mne-denoise**（ASR） |

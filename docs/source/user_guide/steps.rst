@@ -75,6 +75,11 @@ Available steps
    * - :class:`~meeg_utils.steps.HeadAlign`
      - Map MEG data to another head position (e.g. the average over runs).
      - ``positions``
+   * - :class:`~meeg_utils.steps.Maxwell`
+     - SSS / tSSS (Neuromag): removes external interference, rebuilds bad
+       MEG channels, optional movement compensation (``head_pos="chpi"``)
+       and transformation to a destination head position.
+     - ``psd``, ``head_positions``\ :sup:`†`, ``displacement``\ :sup:`†`
    * - :class:`~meeg_utils.steps.BridgedElectrodes`
      - Detect and interpolate bridged EEG electrodes.
      - ``topomap``, ``distances``
@@ -95,7 +100,8 @@ Available steps
        epochs (local), or one threshold per channel type (global).
      - ``reject_log``, ``thresholds``
 
-\* needs data: ``step.plot(inst=...)``.
+\* needs data: ``step.plot(inst=...)``. :sup:`†` only with movement
+compensation.
 
 Figures
 -------
@@ -106,6 +112,31 @@ on the fitted step; ``step.plot(inst=raw)`` adds the others;
 underlying MNE function. Figures are returned, never shown. For a pipeline,
 ``pipe.plot(inst=raw)`` replays the fitted steps so that every step plots
 the data it actually received.
+
+MEG and EEG recorded together
+-----------------------------
+
+Most steps already treat channel types separately (filters, line noise, bad
+channels). When a type needs its own steps, branch with
+:class:`~meeg_utils.steps.ByChannelType`, the counterpart of scikit-learn's
+``ColumnTransformer``:
+
+.. code-block:: python
+
+   pipe = meu.Pipeline([
+       ("sss", S.Maxwell(st_duration=10.0)),
+       ("by_type", S.ByChannelType({
+           "meg": [("ica", S.ICA(picks="meg", labeler="megnet"))],
+           "eeg": [("bads", S.BadChannels("prep")), ("interpolate", S.Interpolate()),
+                   ("ref", S.Reference("average")), ("ica", S.ICA(picks="eeg"))],
+       })),
+   ])
+   pipe.set_params(by_type__eeg__ica__n_components=15)
+
+Each branch runs on a copy holding only its channels and the results are
+written back, so every channel stays in the data. Steps that change the
+channels or the time axis (``Resample``, ``Epoch``) belong outside the
+branches.
 
 Several runs
 ------------
@@ -120,7 +151,9 @@ combining them:
    pipe.insert_after("ica", "align", S.HeadAlign(dest))
 
 ``HeadAlign`` uses minimum-norm field mapping; in simulations it lowers the
-error caused by a 10 mm / 5° head movement from 32-49 % to 1-3 %.
+error caused by a 10 mm / 5° head movement from 32-49 % to 1-3 %. For
+Neuromag data, ``S.Maxwell(destination=dest)`` does the same as part of
+Maxwell filtering.
 
 After epoching each run, combine them:
 
