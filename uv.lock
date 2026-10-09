@@ -922,6 +922,7 @@ dependencies = [
     { name = "meegkit" },
     { name = "mne" },
     { name = "mne-bids" },
+    { name = "mne-denoise", extra = ["mne"] },
     { name = "mne-icalabel" },
     { name = "onnxruntime" },
     { name = "pandas" },
@@ -953,12 +954,13 @@ requires-dist = [
     { name = "joblib", specifier = ">=1.3" },
     { name = "loguru", specifier = ">=0.7.3" },
     { name = "meegkit", specifier = ">=0.1.9" },
-    { name = "mne", specifier = ">=1.11.0" },
-    { name = "mne-bids", specifier = ">=0.18.0" },
-    { name = "mne-icalabel", specifier = ">=0.8.1" },
+    { name = "mne", specifier = ">=1.13.2" },
+    { name = "mne-bids", specifier = ">=0.20.0" },
+    { name = "mne-denoise", extras = ["mne"], specifier = ">=0.0.3,<0.1" },
+    { name = "mne-icalabel", specifier = ">=0.10.0" },
     { name = "onnxruntime", specifier = ">=1.24.2" },
     { name = "pandas", specifier = ">=2.0" },
-    { name = "pyprep", specifier = ">=0.6.0" },
+    { name = "pyprep", specifier = ">=0.9.0" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "scikit-learn", specifier = ">=1.5" },
 ]
@@ -1002,7 +1004,7 @@ wheels = [
 
 [[package]]
 name = "mne"
-version = "1.11.0"
+version = "1.13.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "decorator" },
@@ -1015,28 +1017,48 @@ dependencies = [
     { name = "scipy" },
     { name = "tqdm" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/9b/4f/ed4c27b6179665235a7ce3a738b24a05cafe9fa67f728994361598b27c2f/mne-1.11.0.tar.gz", hash = "sha256:0a89b8fc44133b81218a35cdcba74ad0f8ae2e265136249b365b9ce04864c688", size = 7152794, upload-time = "2025-11-21T19:34:45.907Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/cf/19/004114922a8e6afcc713cbc6122c015b2487f17fc7ca021db700501868ea/mne-1.13.2.tar.gz", hash = "sha256:729829e35010a7273cce8608d61d930c973fbead6edc1a70316c01e3a5551521", size = 7362367, upload-time = "2026-09-11T16:35:08.004Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/c3/60/a9b51009f6df38b491a874b3ca5db1ce37395c6327faca1008e71e9814e6/mne-1.11.0-py3-none-any.whl", hash = "sha256:993f25b0c92e563c23cb272c42c6c0298be10f40ed50abe4dd2deeba8d184ac2", size = 7451119, upload-time = "2025-11-21T19:34:43.463Z" },
+    { url = "https://files.pythonhosted.org/packages/44/e4/face21e5da320fdc3a3e016ea93a28d1b786d01b36d75872627161a837aa/mne-1.13.2-py3-none-any.whl", hash = "sha256:36bbdd9fdc68431309a75e9dc6331b9de085cb6836688ac50b7b89f141a83cc3", size = 7668762, upload-time = "2026-09-11T16:35:05.268Z" },
 ]
 
 [[package]]
 name = "mne-bids"
-version = "0.18.0"
+version = "0.20.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mne" },
     { name = "numpy" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b6/9d/be59dca5fdfa720bb12bc0d3457ba576f7f48f41f70becb1d26aa23d50d0/mne_bids-0.18.0.tar.gz", hash = "sha256:9db6bbeabc8b465ce17c2356ad11606b871a0116054866a2413a9b313421134a", size = 140023, upload-time = "2025-12-23T14:24:57.145Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/68/86/fee96dbc4664e3fec6c98739870eded9fc08fdcbbc4509b205e59b74fb2f/mne_bids-0.20.0.tar.gz", hash = "sha256:8d196664a2f0a3bd2d5afd41777cf6cf43606201c3b9118ab43dc92758681c23", size = 163873, upload-time = "2026-09-29T00:00:56.019Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/d7/2f/61cdb5a0e3fdbca99ee7d4275ba0e43b1e84dd866bca7a7de8cff30dece6/mne_bids-0.18.0-py3-none-any.whl", hash = "sha256:2c3ef03b99f92717cdf426a1a68e4279644ff9e34576a52db14529a0abc539bc", size = 178363, upload-time = "2025-12-23T14:24:55.448Z" },
+    { url = "https://files.pythonhosted.org/packages/1e/42/05928f81af2d0ceddfcbf2153e60bca7b6e3412c9dfe703b64a91f1e3a96/mne_bids-0.20.0-py3-none-any.whl", hash = "sha256:f4ffa7071b5f6f3472cfe6b5f538010b01560df8f0a7b2b4e1abeb7d09b915d0", size = 202484, upload-time = "2026-09-29T00:00:54.01Z" },
+]
+
+[[package]]
+name = "mne-denoise"
+version = "0.0.3"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "joblib" },
+    { name = "numpy" },
+    { name = "scikit-learn" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/45/f7/bba3a256e5c5ac0c678cccb68005f6a4b9f938b5eee60e6042e681e738c7/mne_denoise-0.0.3.tar.gz", hash = "sha256:8124c2186bceae2870b0297173bad56900c888a79529236a38faac2fbc3d9310", size = 527886, upload-time = "2026-09-24T20:01:35.47Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/41/60dea03a0a24a80de73f1e0ec1424932e0f32c7584271010997a377afc3e/mne_denoise-0.0.3-py3-none-any.whl", hash = "sha256:c87560141ac45e3db3065320eace19ce28c16a4c2aa3d819c34e8e57b1621e44", size = 278755, upload-time = "2026-09-24T20:01:33.856Z" },
+]
+
+[package.optional-dependencies]
+mne = [
+    { name = "mne" },
 ]
 
 [[package]]
 name = "mne-icalabel"
-version = "0.8.1"
+version = "0.10.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mne" },
@@ -1046,9 +1068,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/b2/37/d1b070de1134761810e245feb94e82e027dd8829d84c9f78f7e0e4110950/mne_icalabel-0.8.1.tar.gz", hash = "sha256:ce41560ea184fc5e327c8a2ad7f3d4aa5f4a7d844e25148acfff6b9623907187", size = 48812380, upload-time = "2025-10-17T17:43:01.098Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/a5/c1/2b382fcd9993ea4e6dd6eefb0578cb46485101da3e3211c29560ced8b1c6/mne_icalabel-0.10.0.tar.gz", hash = "sha256:6cad9b1fb3df7fa6b3199c0fa434c8db24bff28903698ceeeb46a149f1be6f3f", size = 49031450, upload-time = "2026-10-05T12:39:07.095Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/44/36/38e856311011a1056526979a03343ccf517aba1123a5e61ba05813c51ad6/mne_icalabel-0.8.1-py3-none-any.whl", hash = "sha256:7225d4b5af230e1a8561e4f0412f3a5dff810624432fc15bf304c94392930ec7", size = 48834783, upload-time = "2025-10-17T17:42:57.329Z" },
+    { url = "https://files.pythonhosted.org/packages/84/44/5a690ed2ae78fe2f528a103aa0bee9aa0dcb9de33331e5a4da7e4256ff39/mne_icalabel-0.10.0-py3-none-any.whl", hash = "sha256:57c6821103d5db2869ee9fcd4df566495a2a0c4256e4c948804eb2219a8bdbf8", size = 48812387, upload-time = "2026-10-05T12:39:04.09Z" },
 ]
 
 [[package]]
@@ -1580,7 +1602,7 @@ wheels = [
 
 [[package]]
 name = "pyprep"
-version = "0.6.0"
+version = "0.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "mne" },
@@ -1588,9 +1610,9 @@ dependencies = [
     { name = "psutil" },
     { name = "scipy" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/0c/7c/87dbc237fff8215312af8f708d94702abc73e48bc14a60f17a651e259997/pyprep-0.6.0.tar.gz", hash = "sha256:768a757ea52bbcb071d39139d7a19862910df92f3ac087abf9ec19d17d371de8", size = 33828, upload-time = "2026-02-26T14:16:12.884Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/12/47/c986d197705fe1e17f264ee124ac530d2dba29ec767c182b325fbf5d9d80/pyprep-0.9.0.tar.gz", hash = "sha256:c9f2c7cd524a4732b3d953e507478813f732bffe780cccd4b94841f64ecdddd6", size = 37636, upload-time = "2026-08-21T09:47:27.024Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a2/c5/0e07b6e30eff05109a83366d7f15bbe260c3a07b7e5bb2c91245ec80402a/pyprep-0.6.0-py3-none-any.whl", hash = "sha256:8b77c81ec843492992dfd80c0de89e8132ec1c02a12b58d32abd4142e60cbbbd", size = 37720, upload-time = "2026-02-26T14:16:11.362Z" },
+    { url = "https://files.pythonhosted.org/packages/ea/e1/5c43b1e72756f1692fd018e6e236d5fd73625a262ac0cb1ddcf367995797/pyprep-0.9.0-py3-none-any.whl", hash = "sha256:3613bfd3ba6359819da0a362395857d52e3347193b2c7a14821842a7c9c58220", size = 42007, upload-time = "2026-08-21T09:47:25.649Z" },
 ]
 
 [[package]]

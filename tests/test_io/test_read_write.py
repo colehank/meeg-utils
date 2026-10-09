@@ -21,7 +21,7 @@ def bids_eeg(tmp_path: Path, small_raw: BaseRaw) -> BIDSPath:
     """A one-recording BIDS dataset (no session) with a bad channel marked in channels.tsv."""
     raw = small_raw.copy()
     raw.info["line_freq"] = 50.0
-    raw.set_montage("standard_1020", on_missing="ignore")
+    raw.set_montage("colin27_1020", on_missing="ignore")
     bids_path = BIDSPath(subject="01", task="rest", datatype="eeg", root=tmp_path / "bids")
     write_raw_bids(
         raw, bids_path, allow_preload=True, format="BrainVision", overwrite=True, verbose=False

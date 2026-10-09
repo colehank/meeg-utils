@@ -241,14 +241,14 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 ## 9. 依赖策略
 
 ```
-核心:      mne, mne-bids, numpy, scipy, scikit-learn, pandas, joblib, loguru
-[denoise]  mne-denoise
-[prep]     pyprep
-[icalabel] mne-icalabel, onnxruntime
+核心:      mne>=1.13, mne-bids, mne-denoise[mne], pyprep, mne-icalabel, onnxruntime,
+           numpy, scipy, scikit-learn, pandas, joblib, pyyaml, loguru
 [epochs]   autoreject
 [analysis] specparam, mne-connectivity
 [all]      以上全部
 ```
+
+预处理的基本步骤（工频、坏道、ICA 自动标注）依赖的库放进核心依赖，保证 `pip install meeg-utils` 后预设流程就能直接运行。mne-denoise 仍是 0.0.x，固定 `<0.1`。meegkit 在旧的 `PreprocessingPipeline` 被预设取代后移除。
 
 用到可选依赖的 Step 在构造时检查依赖是否已安装，缺失时给出明确的安装提示（`pip install meeg-utils[denoise]`）。
 

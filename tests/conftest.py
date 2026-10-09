@@ -92,7 +92,7 @@ def sample_eeg_raw() -> BaseRaw:
     raw = mne.io.RawArray(data, info)
 
     # Add realistic montage
-    montage = mne.channels.make_standard_montage("standard_1020")
+    montage = mne.channels.make_standard_montage("colin27_1020")
     raw.set_montage(montage, match_case=False, on_missing="warn")
 
     return raw
