@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 import platform
 import time
 import warnings
@@ -478,16 +479,18 @@ def _estimator_from_dict(entry: dict[str, Any]) -> Step:
 
 
 def _to_serializable(value: Any, path: str = "") -> Any:
+    if getattr(value, "ndim", None) == 0 and hasattr(value, "item"):  # numpy scalars
+        return value.item()
     if value is None or isinstance(value, bool | int | float | str):
         return value
     if isinstance(value, BaseEstimator):
         return _estimator_to_dict(value)
+    if isinstance(value, os.PathLike):
+        return os.fspath(value)
     if isinstance(value, dict):
         return {str(k): _to_serializable(v, f"{path}.{k}") for k, v in value.items()}
     if isinstance(value, Iterable) and not isinstance(value, bytes):
         return [_to_serializable(v, f"{path}[{i}]") for i, v in enumerate(value)]
-    if hasattr(value, "item"):  # numpy scalars
-        return value.item()
     raise TypeError(
         f"Parameter {path.lstrip('.') or 'value'} of type {type(value).__name__} "
         "cannot be serialized; step parameters must be plain data or steps."

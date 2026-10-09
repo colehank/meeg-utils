@@ -159,7 +159,14 @@ meu preset had-meeg --datatype meg > config.yaml
 但 run 之间有两件事必须统一，放在分段（`epochs`）和组水平之前，由专门的 Step 负责，不混进单 run 流程：
 
 1. **通道集合一致。** 合并各 run 的 epochs 前，坏道取各 run 的并集，或者全部插值后对齐通道顺序。
-2. **MEG 头位置对齐。** 把所有 run 变换到同一个目标头位置：Neuromag 用 `maxwell_filter(destination=...)`，CTF/KIT 用基于场映射的变换（需要单独验证正确性，见 HAD-MEEG 审查）。
+2. **MEG 头位置对齐。** 把所有 run 变换到同一个目标头位置。`S.HeadAlign(destination=...)` 用最小范数场映射（Knösche, 2002）计算传感器在目标头位置下应测到的信号，适用于有 `dev_head_t` 的所有 MEG 系统（OPM 除外）；Neuromag 也可以用 `maxwell_filter(destination=...)`（P2 的 `Maxwell` Step）。目标位置通常取各 run 的平均：
+
+   ```python
+   dest = meu.io.average_dev_head_t(runs)          # 按各 run 非 BAD 时长加权平均
+   pipe = Pipeline([..., ("align", S.HeadAlign(dest)), ...])
+   ```
+
+   **仿真验证**（`tests/test_steps/test_head.py`）：球模型中的偶极子分别在参考头位置和移动后的头位置正向投影，用前者作为真值。头移动 10 mm / 5° 时，不对齐的相对误差为 MAG 32%、GRAD 49%；正确对齐后降到 1.1% 和 3.2%；映射方向反过来（HAD-MEEG 的写法）则是 64% 和 101%，比不对齐还差一倍。头相对传感器移动超过 20 mm 时会发出警告。
 
 `fit(run1)` 之后 `transform(run2)` 在技术上仍然可用（例如 run 很短、ICA 数据量不足时），但不进入任何预设。
 
@@ -202,6 +209,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 | | `LineNoise(method=zapline \| zapline-plus \| notch \| spectrum-interpolation)` | **mne-denoise**（ZapLine、ZapLine-plus、SpectrumInterpolation），mne（notch） |
 | | `BadChannels(method=auto \| prep \| maxwell \| ...)` | pyprep, mne |
 | | `Maxwell(st_duration=..., head_pos=...)` | mne |
+| | `HeadAlign(destination=...)`（跨 run 头位置对齐） | mne（场映射） |
 | | `HFC`（OPM）、`RefRegression`（KIT） | mne |
 | | `BadSegments(method=amplitude \| muscle \| asr)` | mne，**mne-denoise**（ASR） |
 | | `ASR`（作为数据修复使用） | **mne-denoise** |

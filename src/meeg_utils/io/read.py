@@ -11,7 +11,7 @@ from mne.io import BaseRaw
 from mne_bids import BIDSPath, get_bids_path_from_fname, read_raw_bids
 
 
-def read(path: str | Path | BIDSPath, **kwargs) -> BaseRaw:
+def read(path: str | Path | BIDSPath, *, preload: bool = True, **kwargs) -> BaseRaw:
     """Read a recording into memory, using BIDS metadata when available.
 
     BIDS recordings are read with :func:`mne_bids.read_raw_bids`, so channel
@@ -24,6 +24,9 @@ def read(path: str | Path | BIDSPath, **kwargs) -> BaseRaw:
     ----------
     path : str | Path | BIDSPath
         The recording.
+    preload : bool
+        Load the data into memory (needed for processing); ``False`` reads
+        only the header and annotations.
     **kwargs
         Passed to :func:`mne_bids.read_raw_bids` (as ``extra_params`` entries
         when reading BIDS data) or :func:`mne.io.read_raw`.
@@ -31,7 +34,7 @@ def read(path: str | Path | BIDSPath, **kwargs) -> BaseRaw:
     Returns
     -------
     Raw
-        The preloaded recording.
+        The recording.
 
     Raises
     ------
@@ -44,12 +47,13 @@ def read(path: str | Path | BIDSPath, **kwargs) -> BaseRaw:
         if bids_path.fpath is None or not Path(bids_path.fpath).exists():
             raise FileNotFoundError(f"BIDS recording not found: {bids_path}")
         raw = read_raw_bids(bids_path, extra_params=kwargs or None, verbose=False)
-        raw.load_data(verbose=False)
+        if preload:
+            raw.load_data(verbose=False)
     else:
         path = Path(path)
         if not path.exists():
             raise FileNotFoundError(f"Recording not found: {path}")
-        raw = mne.io.read_raw(path, preload=True, verbose=False, **kwargs)
+        raw = mne.io.read_raw(path, preload=preload, verbose=False, **kwargs)
 
     if raw.info["line_freq"] is None:
         logger.warning(

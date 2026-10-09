@@ -137,6 +137,11 @@ def _assert_params_equal(actual: dict, expected: dict, msg: str, *, loose: bool 
         if isinstance(value, Step):
             assert type(other) is type(value), f"{msg}: parameter {key!r} differs"
             continue
+        if isinstance(value, np.ndarray) or isinstance(other, np.ndarray):
+            assert np.array_equal(np.asarray(other), np.asarray(value)), (
+                f"{msg}: parameter {key!r} differs"
+            )
+            continue
         assert other == value or (other is value), (
             f"{msg}: parameter {key!r} differs ({other!r} != {value!r})"
         )
