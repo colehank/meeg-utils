@@ -184,10 +184,16 @@ class TestBadChannels:
 
     def test_maxwell_on_neuromag(self, neuromag: BaseRaw) -> None:
         """Maxwell detection finds MNE sample data's known bad channel, MEG 2443."""
-        step = S.BadChannels("maxwell")
+        step = S.BadChannels("maxwell", cross_talk=None, calibration=None)
         step.fit(neuromag)
         assert "MEG 2443" in step.bads_
         assert step.qc_["meg"]["fraction"] < 0.05
+        assert step.qc_["maxwell_files"] == {"cross_talk": None, "calibration": None}
+
+    def test_maxwell_files_must_be_found(self, neuromag: BaseRaw) -> None:
+        """cross_talk='auto' on a recording outside BIDS fails loudly."""
+        with pytest.raises(FileNotFoundError, match="not in a BIDS dataset"):
+            S.BadChannels("maxwell").fit(neuromag)
 
     def test_unsupported_meg_system_raises(self) -> None:
         """MEG systems without a validated default fail loudly."""

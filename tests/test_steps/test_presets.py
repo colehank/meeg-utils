@@ -87,6 +87,7 @@ def test_had_meeg_meg_until_ica(neuromag: BaseRaw):
     """MEGnet needs >= 60 s, so the short test recording stops before ICA."""
     neuromag.info["line_freq"] = 60.0
     pipe = Pipeline.preset("had-meeg", datatype="meg")[:-1]
+    pipe.set_params(bads__cross_talk=None, bads__calibration=None)  # not a BIDS dataset
     out = pipe.fit_transform(neuromag.pick(["meg", "stim"]))
     assert "MEG 2443" in pipe.qc_["bads"]["meg"]["bads"]
     assert "MEG 2443" in pipe.qc_["interpolate"]["interpolated"]

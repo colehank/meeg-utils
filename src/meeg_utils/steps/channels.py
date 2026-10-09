@@ -51,8 +51,12 @@ class BadChannels(Step):
         PREP: whether to ignore ``BAD_`` annotated segments.
     origin : str | tuple
         Maxwell: head origin, ``"auto"`` fits it to the digitization.
-    cross_talk, calibration : str | None
-        Maxwell: Neuromag cross-talk and fine-calibration files.
+    cross_talk, calibration : "auto" | str | None
+        Maxwell, Neuromag only: cross-talk and fine-calibration files.
+        ``"auto"`` (default) finds them in the BIDS dataset of the recording
+        (``sub-*/[ses-*/]meg/*_acq-crosstalk_meg.fif`` and
+        ``*_acq-calibration_meg.dat``) and raises if they are missing;
+        ``None`` detects without them (less accurate).
     limit : float
         Maxwell: detection threshold.
     h_freq : float | None
@@ -86,8 +90,8 @@ class BadChannels(Step):
         random_state: int | None = 42,
         reject_by_annotation: str | None = None,
         origin: str | tuple[float, float, float] = "auto",
-        cross_talk: str | None = None,
-        calibration: str | None = None,
+        cross_talk: str | None = "auto",
+        calibration: str | None = "auto",
         limit: float = 7.0,
         h_freq: float | None = 40.0,
     ) -> None:
@@ -178,12 +182,18 @@ class BadChannels(Step):
         meg = inst.copy().pick(["meg", "ref_meg"], exclude=[])
         if self.system_ == "ctf" and meg.compensation_grade != 0:
             meg.apply_gradient_compensation(0, verbose=False)  # required by Maxwell filtering
+        cross_talk = _maxwell_file(self.cross_talk, inst, "cross_talk", self.system_)
+        calibration = _maxwell_file(self.calibration, inst, "calibration", self.system_)
+        self.qc_["maxwell_files"] = {
+            "cross_talk": None if cross_talk is None else str(cross_talk),
+            "calibration": None if calibration is None else str(calibration),
+        }
         noisy, flat, scores = find_bad_channels_maxwell(
             meg,
             limit=self.limit,
             origin=self.origin,
-            cross_talk=self.cross_talk,
-            calibration=self.calibration,
+            cross_talk=cross_talk,
+            calibration=calibration,
             h_freq=self.h_freq,
             return_scores=True,
             verbose=False,
@@ -369,3 +379,33 @@ class Reference(Step):
             info["ctf_grade_after"] = int(inst.compensation_grade)
         self.qc_.update(info)
         return inst
+
+
+def _maxwell_file(value: Any, raw: BaseRaw, kind: str, system: str) -> Any:
+    """Resolve a cross-talk / fine-calibration argument (``"auto"`` looks in BIDS)."""
+    if value != "auto":
+        return value
+    if system != "neuromag":
+        return None  # these files exist for Neuromag/MEGIN systems only
+    from pathlib import Path
+
+    from ..io.read import as_bids_path
+
+    fname = raw.filenames[0] if raw.filenames else None
+    bids_path = as_bids_path(Path(fname)) if fname is not None else None
+    if bids_path is None:
+        raise FileNotFoundError(
+            f"{kind}='auto' looks for the file in the BIDS dataset of the recording, but "
+            f"{fname} is not in a BIDS dataset; pass the file, or {kind}=None to detect "
+            "bad channels without it (less accurate)."
+        )
+    found = (
+        bids_path.meg_crosstalk_fpath if kind == "cross_talk" else bids_path.meg_calibration_fpath
+    )
+    if found is None:
+        raise FileNotFoundError(
+            f"No {kind.replace('_', '-')} file for sub-{bids_path.subject} in {bids_path.root}; "
+            f"add it (mne_bids.write_meg_{'crosstalk' if kind == 'cross_talk' else 'calibration'}), "
+            f"or pass {kind}=None to detect bad channels without it (less accurate)."
+        )
+    return found

@@ -21,7 +21,7 @@ pipe.plot(inst=raw) # 每一步的质量图
 |---|---|---|---|
 | 1 | `filter` | `Filter(0.1, 100)` | 同左 |
 | 2 | `resample` | `Resample(250)` | 同左 |
-| 3 | `bads` | `BadChannels("maxwell", origin=(0, 0, 0.04))`，在 grade-0 补偿的副本上检测 | `BadChannels("prep")`，PREP 全部判据 |
+| 3 | `bads` | `BadChannels("maxwell", origin=(0, 0, 0.04))`，在 grade-0 补偿的副本上检测（CTF 没有 cross-talk / fine-cal 文件，`"auto"` 时自动不用） | `BadChannels("prep")`，PREP 全部判据 |
 | 4 | `interpolate` | `Interpolate(origin=(0, 0, 0.04))`，MNE 场插值 | `Interpolate()`，球面样条 |
 | 5 | `line_noise` | `LineNoise("zapline-plus")`，工频取自数据 | 同左 |
 | 6 | `reference` | `Reference(eeg=None, ctf_grade=3)` | `Reference(eeg="average")` |
