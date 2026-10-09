@@ -12,6 +12,7 @@ from mne.epochs import BaseEpochs
 from mne.io import BaseRaw
 from mne_bids import BIDSPath
 
+from .read import as_bids_path
 from .system import get_datatypes
 
 if TYPE_CHECKING:
@@ -40,7 +41,8 @@ def save_derivative(
     provenance and QC metrics. ``<root>/dataset_description.json`` is created
     if missing.
 
-    For a non-BIDS ``source``, the file is written directly to ``root`` as
+    A plain path inside a BIDS dataset is treated as BIDS. For a non-BIDS
+    ``source``, the file is written directly to ``root`` as
     ``<source stem>_desc-<desc>_<suffix>.fif``.
 
     Parameters
@@ -70,6 +72,8 @@ def save_derivative(
         If the output exists and ``overwrite`` is False.
     """
     root = Path(root)
+    if not isinstance(source, BIDSPath):  # a plain path inside a BIDS dataset
+        source = as_bids_path(Path(source)) or source
     datatype = _datatype(inst, source)
     suffix = _suffix(inst, datatype)
 
@@ -109,6 +113,38 @@ def save_derivative(
     )
     logger.info(f"Saved {type(inst).__name__} derivative to {fname}")
     return fname
+
+
+def existing_derivatives(
+    source: BIDSPath | str | Path, root: str | Path, *, desc: str = "preproc"
+) -> list[Path]:
+    """Return the derivative files already written for ``source``, if any.
+
+    Parameters
+    ----------
+    source : BIDSPath | str | Path
+        The recording, as passed to :func:`save_derivative`.
+    root : str | Path
+        Root of the derivatives dataset.
+    desc : str
+        Value of the BIDS ``desc`` entity.
+
+    Returns
+    -------
+    list of Path
+        Matching data files (any suffix, including split files), sorted.
+    """
+    root = Path(root)
+    if not isinstance(source, BIDSPath):
+        source = as_bids_path(Path(source)) or source
+    if isinstance(source, BIDSPath):
+        out = source.copy().update(
+            root=root, description=desc, suffix=None, extension=None, split=None, check=False
+        )
+        directory, prefix = Path(str(out.directory)), out.basename
+    else:
+        directory, prefix = root, f"{Path(source).stem}_desc-{desc}"
+    return sorted(directory.glob(f"{prefix}_*.fif"))
 
 
 def _datatype(inst: BaseRaw | BaseEpochs | Evoked, source: BIDSPath | str | Path) -> str:

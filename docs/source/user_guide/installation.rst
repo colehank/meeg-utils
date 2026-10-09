@@ -34,46 +34,26 @@ For development or latest features:
    cd meeg-utils
 
    # Install with uv (recommended for development)
-   uv sync --all-extras --dev
-
-   # Or with pip
-   pip install -e ".[dev]"
+   uv sync
 
 Dependencies
 ------------
 
-Core dependencies are automatically installed:
+Installed automatically:
 
-* **mne** (>=1.11.0) - Core MEG/EEG processing
-* **mne-bids** (>=0.18.0) - BIDS support
-* **pyprep** (>=0.6.0) - Bad channel detection for EEG
-* **meegkit** (>=0.1.9) - Line noise removal
-* **mne-icalabel** (>=0.8.1) - Automatic ICA labeling
-* **loguru** (>=0.7.3) - Logging
-
-Optional Dependencies
----------------------
-
-For development:
-
-.. code-block:: bash
-
-   pip install meeg-utils[dev]
-
-This installs additional tools:
-
-* pytest - Testing framework
-* ruff - Linter and formatter
-* mypy - Type checking
-* pre-commit - Git hooks
+* **mne** (>=1.13.2) - MEG/EEG data structures and processing
+* **mne-bids** (>=0.20) - BIDS reading and writing
+* **mne-denoise** (>=0.0.3) - ZapLine and ZapLine-plus line-noise removal
+* **pyprep** (>=0.9) - PREP bad-channel detection for EEG
+* **mne-icalabel** (>=0.10) and **onnxruntime** - ICLabel / MEGnet component labels
+* **scikit-learn** (>=1.5) - estimator conventions (``clone``, parameters)
+* **pyyaml**, **joblib**, **loguru**
 
 Verify Installation
 -------------------
 
 .. code-block:: python
 
-   import meeg_utils
-   print(meeg_utils.__version__)
-
-   from meeg_utils.preprocessing import PreprocessingPipeline
-   print("Installation successful!")
+   import meeg_utils as meu
+   print(meu.__version__)
+   print(meu.presets.available())

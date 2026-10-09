@@ -303,7 +303,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 [all]      以上全部
 ```
 
-预处理的基本步骤（工频、坏道、ICA 自动标注）依赖的库放进核心依赖，保证 `pip install meeg-utils` 后预设流程就能直接运行。mne-denoise 仍是 0.0.x，固定 `<0.1`。meegkit 在旧的 `PreprocessingPipeline` 被预设取代后移除。
+预处理的基本步骤（工频、坏道、ICA 自动标注）依赖的库放进核心依赖，保证 `pip install meeg-utils` 后预设流程就能直接运行。mne-denoise 仍是 0.0.x，固定 `<0.1`。meegkit、pandas 已随旧的 `PreprocessingPipeline` 一起在 0.2.0 移除。
 
 用到可选依赖的 Step 在构造时检查依赖是否已安装，缺失时给出明确的安装提示（`pip install meeg-utils[denoise]`）。
 
@@ -322,7 +322,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 
 | 阶段 | 内容 |
 |---|---|
-| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
+| **P0 打地基**（已完成） | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；`HeadAlign` 跨 run 头位置对齐；`meu.process` 批处理（`BatchRunner` 的最小版本）；删除旧的 `PreprocessingPipeline` / `BatchPreprocessingPipeline` 和 meegkit；版本 0.2.0 |
 | **P1 质量检查** | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、`epochs` 模块、L3 `Dataset` / `BatchRunner` |
 | **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS；`group` 模块；`meu` 命令行 |

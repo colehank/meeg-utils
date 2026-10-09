@@ -1,7 +1,7 @@
-"""meeg-utils: A Python-based MEEG processing toolkit.
+"""meeg-utils: MEG and EEG quality control, preprocessing and analysis.
 
-This package provides utilities for processing MEG and EEG data,
-including preprocessing, epoching, and feature extraction.
+Use as ``import meeg_utils as meu``; processing steps live in
+``meu.steps`` and ready-made pipelines in ``meu.presets``.
 """
 
 from importlib.metadata import PackageNotFoundError, version
@@ -12,19 +12,18 @@ except PackageNotFoundError:  # pragma: no cover - running from a source tree
     __version__ = "0.0.0"
 
 from . import io, presets, steps
+from .batch import process
 from .core import Pipeline, Step
 from .logger import log_to_file, logger, setup_logging, teardown_logging
-from .preprocessing import BatchPreprocessingPipeline, PreprocessingPipeline
 
 __all__ = [
-    "BatchPreprocessingPipeline",
     "Pipeline",
-    "PreprocessingPipeline",
     "Step",
     "io",
     "log_to_file",
     "logger",
     "presets",
+    "process",
     "setup_logging",
     "steps",
     "teardown_logging",

@@ -92,3 +92,6 @@ results/
 outputs/
 *.h5
 *.hdf5
+
+# Sphinx autosummary output
+docs/source/api/_autosummary/

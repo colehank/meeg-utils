@@ -59,7 +59,7 @@ Running Tests
    uv run pytest
 
    # Run specific test file
-   uv run pytest tests/test_preprocessing/test_pipeline.py
+   uv run pytest tests/test_steps/test_steps.py
 
    # Run with coverage
    uv run pytest --cov=src/meeg_utils --cov-report=html

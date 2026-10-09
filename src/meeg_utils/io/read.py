@@ -41,7 +41,7 @@ def read(path: str | Path | BIDSPath, *, preload: bool = True, **kwargs) -> Base
     FileNotFoundError
         If the recording does not exist.
     """
-    bids_path = path if isinstance(path, BIDSPath) else _as_bids_path(Path(path))
+    bids_path = path if isinstance(path, BIDSPath) else as_bids_path(Path(path))
 
     if bids_path is not None:
         if bids_path.fpath is None or not Path(bids_path.fpath).exists():
@@ -63,7 +63,7 @@ def read(path: str | Path | BIDSPath, *, preload: bool = True, **kwargs) -> Base
     return raw
 
 
-def _as_bids_path(path: Path) -> BIDSPath | None:
+def as_bids_path(path: Path) -> BIDSPath | None:
     """Return the BIDSPath of a raw file inside a BIDS dataset, else None.
 
     Files inside BIDS derivatives are not raw BIDS data (they lack the raw

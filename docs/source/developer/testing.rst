@@ -1,376 +1,78 @@
 Testing
 =======
 
-This document describes the testing strategy and guidelines for meeg-utils.
+Principles
+----------
 
-Test-Driven Development
------------------------
+* **No mocks of the scientific code.** Steps run the real MNE, PyPREP,
+  mne-denoise and mne-icalabel code, so a dependency update that changes
+  results is caught.
+* **Ground truth where possible.** Synthetic data are built so the right
+  answer is known: line noise added to a line-free signal, a noisy and a
+  flat channel at known positions, dipoles projected at known head
+  positions. Tests compare against that truth, not against a previous
+  output.
+* **Contracts for every step.** Every step passes
+  :func:`meeg_utils.testing.check_step`: parameters survive ``clone``,
+  ``set_params`` and a YAML round trip; ``transform`` before ``fit`` raises;
+  the input is not modified; channels and the time axis are unchanged unless
+  declared; every declared figure can be drawn.
 
-All development follows strict TDD principles:
-
-RED-GREEN-REFACTOR Cycle
-~~~~~~~~~~~~~~~~~~~~~~~~~
-
-1. **RED**: Write a failing test
-
-   .. code-block:: python
-
-      def test_filter_with_valid_params():
-          """Test filtering with valid parameters."""
-          pipeline = PreprocessingPipeline(input_path=sample_eeg_raw)
-          pipeline.raw = sample_eeg_raw
-
-          filtered = pipeline.filter_and_resample(
-              highpass=0.1,
-              lowpass=100.0,
-              sfreq=250.0,
-          )
-
-          assert filtered is not None
-          assert filtered.info["sfreq"] == 250.0
-
-2. **GREEN**: Write minimal code to pass
-
-   .. code-block:: python
-
-      def filter_and_resample(self, highpass, lowpass, sfreq):
-          self.raw.filter(l_freq=highpass, h_freq=lowpass)
-          self.raw.resample(sfreq)
-          return self.raw
-
-3. **REFACTOR**: Improve code while keeping tests green
-
-Test Organization
------------------
-
-Directory Structure
-~~~~~~~~~~~~~~~~~~~
+Layout
+------
 
 .. code-block:: text
 
    tests/
-   ├── conftest.py                    # Shared fixtures
-   ├── test_preprocessing/
-   │   ├── test_pipeline.py          # Pipeline tests
-   │   └── test_batch.py             # Batch processing tests
-   └── ...
+   ├── conftest.py               # small_raw: tiny EEG with first_samp, meas_date, annotations
+   ├── test_batch.py             # meu.process
+   ├── test_logging.py
+   ├── test_core/                # Step and Pipeline (toy steps in _steps.py)
+   ├── test_io/                  # reading, system detection, derivatives
+   └── test_steps/
+       ├── conftest.py           # make_eeg() simulation, Neuromag test recording
+       ├── test_steps.py         # each step: contract + scientific checks
+       ├── test_head.py          # HeadAlign against forward-simulated data
+       └── test_presets.py       # preset configuration and end-to-end runs
 
 Fixtures
-~~~~~~~~
+--------
 
-Common test data is provided via fixtures in ``conftest.py``:
+``make_eeg(line=True, blinks=True, bad=False, seed=0)`` (``tests/test_steps/conftest.py``)
+   60 s of 32-channel EEG at 250 Hz: spatially smooth 1/f background,
+   posterior alpha, frontal blinks with an EOG channel, 50 Hz line noise,
+   and optionally a noisy (C4) and a flat (P8) channel.
 
-.. code-block:: python
+``neuromag``
+   10 s of MNE's Neuromag test recording (306 MEG + 60 EEG), downloaded once
+   with a pinned URL and SHA-256 hash into the pooch cache; tests that need
+   it are skipped when offline.
 
-   @pytest.fixture
-   def sample_eeg_raw() -> BaseRaw:
-       \"\"\"Create sample EEG data for testing.\"\"\"
-       # Creates realistic synthetic EEG data
-       ...
-
-   @pytest.fixture
-   def sample_meg_raw() -> BaseRaw:
-       \"\"\"Create sample MEG data for testing.\"\"\"
-       # Creates realistic synthetic MEG data
-       ...
-
-   @pytest.fixture
-   def mock_bids_path(tmp_path) -> BIDSPath:
-       \"\"\"Create a mock BIDS dataset.\"\"\"
-       # Creates temporary BIDS structure
-       ...
-
-Mock Strategy
-~~~~~~~~~~~~~
-
-To keep tests fast, we mock expensive operations:
+Testing a custom step
+---------------------
 
 .. code-block:: python
 
-   @pytest.fixture
-   def mock_iclabel(mocker):
-       \"\"\"Mock ICLabel to avoid expensive computation.\"\"\"
-       def mock_label_components(raw, ica, method="iclabel"):
-           n_components = ica.n_components_
-           return {
-               "labels": ["brain"] * n_components,
-               "y_pred_proba": [0.9] * n_components,
-           }
+   from meeg_utils.testing import check_step
 
-       mocker.patch(
-           "meeg_utils.preprocessing.ica.label_components",
-           side_effect=mock_label_components,
-       )
-       return mock_label_components
+   def test_my_step_contract(eeg):
+       check_step(MyStep(param=1), eeg)
 
-**Mocked components:**
-
-* ICA (ICLabel/MEGNet) - Avoid expensive ICA decomposition
-* PREP (NoisyChannels) - Avoid RANSAC detection
-* Zapline (DSS) - Avoid DSS iterations
-
-**Philosophy:** Trust library implementations, test our wrapper logic.
-
-Running Tests
--------------
-
-Basic Usage
-~~~~~~~~~~~
+Running
+-------
 
 .. code-block:: bash
 
-   # Run all tests
-   uv run pytest
+   uv run pytest                                  # everything (a few minutes)
+   uv run pytest tests/test_core tests/test_io    # fast subset
+   uv run pytest tests/test_steps/test_head.py -k recovers
+   uv run pytest --cov=meeg_utils --cov-report=term-missing
 
-   # Run specific test file
-   uv run pytest tests/test_preprocessing/test_pipeline.py
-
-   # Run specific test
-   uv run pytest tests/test_preprocessing/test_pipeline.py::TestPathInputParsing::test_accepts_plain_string_path
-
-   # Run tests matching pattern
-   uv run pytest -k "ica"
-
-With Coverage
-~~~~~~~~~~~~~
+Code quality checks run in CI as well:
 
 .. code-block:: bash
 
-   # Generate coverage report
-   uv run pytest --cov=src/meeg_utils --cov-report=html
-
-   # Open report
-   open htmlcov/index.html
-
-Verbose Output
-~~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Show detailed output
-   uv run pytest -v
-
-   # Show print statements
-   uv run pytest -s
-
-   # Show why tests were skipped
-   uv run pytest -rs
-
-Performance
-~~~~~~~~~~~
-
-Our optimized tests run in ~35 seconds (total of 52 tests):
-
-.. code-block:: bash
-
-   $ uv run pytest
-   ============================= 52 passed in 35.18s ==============================
-
-This is 83% faster than running without mocks (216 seconds).
-
-Test Categories
----------------
-
-Unit Tests
-~~~~~~~~~~
-
-Test individual functions in isolation:
-
-.. code-block:: python
-
-   class TestFilteringAndResampling:
-       def test_filter_and_resample_with_valid_params(self, sample_eeg_raw):
-           pipeline = PreprocessingPipeline(input_path=sample_eeg_raw)
-           pipeline.raw = sample_eeg_raw
-
-           filtered = pipeline.filter_and_resample(
-               highpass=0.1,
-               lowpass=100.0,
-               sfreq=250.0,
-           )
-
-           assert filtered is not None
-           assert filtered.info["sfreq"] == 250.0
-           assert filtered.info["highpass"] == 0.1
-           assert filtered.info["lowpass"] == 100.0
-
-Integration Tests
-~~~~~~~~~~~~~~~~~
-
-Test multiple components working together:
-
-.. code-block:: python
-
-   class TestFullPipeline:
-       def test_run_complete_pipeline_default_params(
-           self, mock_bids_path, mock_iclabel, mock_zapline, mock_prep, mocker
-       ):
-           mocker.patch(
-               "meeg_utils.preprocessing.bad_channels.NoisyChannels",
-               return_value=mock_prep,
-           )
-
-           pipeline = PreprocessingPipeline(input_path=mock_bids_path)
-           result = pipeline.run(ica_params={"n_components": 2})
-
-           assert result is not None
-           assert isinstance(result, mne.io.BaseRaw)
-
-Batch Tests
-~~~~~~~~~~~
-
-Test parallel processing:
-
-.. code-block:: python
-
-   class TestBatchProcessing:
-       def test_run_batch_parallel_processing(
-           self, multiple_bids_paths, temp_output_dir, mocks...
-       ):
-           batch = BatchPreprocessingPipeline(
-               input_paths=multiple_bids_paths,
-               output_dir=temp_output_dir,
-               n_jobs=2,
-           )
-
-           batch.run(ica_params={"n_components": 2})
-
-           output_files = list(temp_output_dir.glob("**/*_preproc_*.fif"))
-           assert len(output_files) == 3
-
-Writing Good Tests
-------------------
-
-Test Names
-~~~~~~~~~~
-
-Use descriptive names following the pattern: ``test_<what>_<condition>``
-
-Good:
-
-.. code-block:: python
-
-   def test_filter_validates_nyquist_frequency(self, sample_eeg_raw):
-       ...
-
-   def test_interpolate_bad_channels(self, sample_eeg_raw):
-       ...
-
-Bad:
-
-.. code-block:: python
-
-   def test_filter1(self):
-       ...
-
-   def test_channels(self):
-       ...
-
-Assertions
-~~~~~~~~~~
-
-Be specific in assertions:
-
-Good:
-
-.. code-block:: python
-
-   assert result.info["sfreq"] == 250.0
-   assert "Fp1" in result.info["bads"]
-   assert len(output_files) == 3
-
-Bad:
-
-.. code-block:: python
-
-   assert result
-   assert result.info
-   assert output_files
-
-Error Testing
-~~~~~~~~~~~~~
-
-Test error conditions:
-
-.. code-block:: python
-
-   def test_filter_validates_highpass_lowpass_order(self, sample_eeg_raw):
-       pipeline = PreprocessingPipeline(input_path=sample_eeg_raw)
-       pipeline.raw = sample_eeg_raw
-
-       with pytest.raises((ValueError, AssertionError)):
-           pipeline.filter_and_resample(
-               highpass=50.0,
-               lowpass=10.0,  # lowpass < highpass: invalid
-               sfreq=250.0,
-           )
-
-Coverage Goals
---------------
-
-Target: >80% code coverage
-
-Check coverage:
-
-.. code-block:: bash
-
-   uv run pytest --cov=src/meeg_utils --cov-report=term
-
-Current coverage:
-
-* Overall: TBD
-* preprocessing.pipeline: TBD
-* preprocessing.batch: TBD
-
-Continuous Integration
-----------------------
-
-All tests run automatically on GitHub Actions:
-
-* Python 3.11, 3.12
-* Ubuntu, macOS, Windows
-* Coverage reported to Codecov
-
-See :doc:`ci_cd` for details.
-
-Troubleshooting
----------------
-
-Tests Fail Locally
-~~~~~~~~~~~~~~~~~~
-
-1. Ensure dependencies are up to date:
-
-   .. code-block:: bash
-
-      uv sync --dev
-
-2. Clear pytest cache:
-
-   .. code-block:: bash
-
-      rm -rf .pytest_cache
-      uv run pytest
-
-3. Run with verbose output:
-
-   .. code-block:: bash
-
-      uv run pytest -vv
-
-Tests Timeout
-~~~~~~~~~~~~~
-
-If tests are slow:
-
-1. Check if mocks are being used
-2. Reduce test data size
-3. Run specific test file instead of all
-
-Import Errors
-~~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   # Reinstall package in editable mode
-   uv pip install -e .
+   uv run ruff check src tests
+   uv run ruff format --check src tests
+   uv run mypy src
+   uv run interrogate src
