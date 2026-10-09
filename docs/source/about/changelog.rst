@@ -9,8 +9,36 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 [Unreleased]
 ------------
 
+Validated on real data: the first two runs of HAD-MEEG sub-01 (OpenNeuro
+ds007353; CTF MEG and Neuroscan EEG) through QC, ``had-meeg`` and the
+recommended presets. What it revealed is in ``docs/validation/ds007353-sub-01.md``
+and fixed below.
+
+Changed
+~~~~~~~
+
+* ``qc.Bridging`` / ``steps.BridgedElectrodes`` confirm MNE's candidate
+  pairs by their correlation after average reference in 15-30 Hz
+  (``min_correlation=0.98``): with small signals, MNE's absolute distance
+  cutoff also flags unbridged neighbours.
+* ``BadChannels("prep")`` detects after PREP's robust average reference
+  (``robust_reference=True``), as the PREP paper does; channels next to the
+  recording reference are no longer flagged.
+* Maxwell bad-channel detection no longer marks MEG reference sensors bad
+  (they cannot be interpolated); noisy ones are reported with a warning.
+* ``origin="auto"`` falls back to (0, 0, 0.04) m with a warning when there
+  are no head-shape points (bad channels, interpolation, HeadAlign, Maxwell).
+* MEG presets resample before ZapLine-plus (memory).
+* ``qc.HeartRate`` flags unreliable beat detection (irregular intervals).
+* ``meu.Dataset`` leaves out empty-room recordings.
+* ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
+  working around an autoreject indexing error when other channels come
+  first (CTF), and writes the result back to all channels.
+
 Added
 ~~~~~
+
+* ``meu run --set STEP__PARAM=VALUE`` changes step parameters.
 
 * ``meu.qc``: acquisition-quality checks (amplitude, bridging, impedance,
   outlying channels, narrowband noise, muscle, blinks, heart rate, head

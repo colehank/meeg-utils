@@ -26,7 +26,7 @@ class BridgedElectrodes(Step):
 
     Parameters
     ----------
-    lm_cutoff, epoch_threshold, l_freq, h_freq, epoch_duration : float
+    lm_cutoff, epoch_threshold, l_freq, h_freq, epoch_duration, min_correlation, confirm_band
         Detection parameters (see :class:`meeg_utils.qc.Bridging`).
     bad_limit : int
         Groups of more bridged electrodes than this cannot be interpolated
@@ -62,6 +62,8 @@ class BridgedElectrodes(Step):
         l_freq: float = 0.5,
         h_freq: float = 30.0,
         epoch_duration: float = 2.0,
+        min_correlation: float | None = 0.98,
+        confirm_band: tuple[float, float] = (15.0, 30.0),
         bad_limit: int = 4,
         large_groups: str = "raise",
     ) -> None:
@@ -70,6 +72,8 @@ class BridgedElectrodes(Step):
         self.l_freq = l_freq
         self.h_freq = h_freq
         self.epoch_duration = epoch_duration
+        self.min_correlation = min_correlation
+        self.confirm_band = confirm_band
         self.bad_limit = bad_limit
         self.large_groups = large_groups
 
@@ -90,6 +94,8 @@ class BridgedElectrodes(Step):
             l_freq=self.l_freq,
             h_freq=self.h_freq,
             epoch_duration=self.epoch_duration,
+            min_correlation=self.min_correlation,
+            confirm_band=self.confirm_band,
             bad_limit=self.bad_limit,
         )
         reason = check.not_applicable(inst)
@@ -102,7 +108,8 @@ class BridgedElectrodes(Step):
         if large and self.large_groups == "raise":
             raise ValueError(
                 f"Bridged groups larger than bad_limit={self.bad_limit} cannot be interpolated "
-                f"reliably: {large}. Fix the cap, or pass large_groups='bad' to mark them bad."
+                f"reliably: {large}. Fix the cap, or pass large_groups='bad' to mark them bad "
+                "(in a pipeline: pipe.set_params(<step>__large_groups='bad'))."
             )
         self.marked_bad_ = sorted(ch for g in large for ch in g)
         self.qc_.update(

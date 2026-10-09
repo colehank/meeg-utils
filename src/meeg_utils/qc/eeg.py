@@ -24,6 +24,19 @@ class Bridging(Check):
     pair in a short recording can go undetected (the ``"distances"`` figure
     still shows it as a separate cluster near zero).
 
+    The electrical distance is absolute (µV²), so in recordings with small
+    signals, neighbouring electrodes that are not bridged can fall below
+    the cutoff too (seen in HAD-MEEG, where 0.5-30 Hz EEG is about 7 µV).
+    Each candidate pair is therefore confirmed by its correlation after
+    average referencing, in a band above slow artifacts (15-30 Hz by
+    default): a bridge is a physical short, so the two electrodes record
+    nearly identical signals at every frequency and their correlation is
+    close to 1, while unbridged neighbours with small signals are not, and
+    broad slow artifacts (sweat, movement), which correlate distant
+    electrodes at low frequencies, are excluded. In HAD-MEEG (sub-01),
+    bridged rows of electrodes kept correlations of 0.98-0.99 from 15 to
+    90 Hz, unbridged neighbours 0.6-0.8.
+
     Parameters
     ----------
     lm_cutoff : float
@@ -35,6 +48,13 @@ class Bridging(Check):
         Band-pass applied before computing distances (MNE default 0.5-30 Hz).
     epoch_duration : float
         Epoch length in seconds (MNE default 2).
+    min_correlation : float | None
+        Candidate pairs whose correlation (average reference,
+        ``confirm_band``) is below this are not counted as bridged. There is
+        no published value; 0.98 is this library's choice. ``None`` keeps
+        every pair MNE finds.
+    confirm_band : tuple of float
+        Band of the confirming correlation (Hz).
     bad_limit : int
         A group of more bridged electrodes than this cannot be repaired by
         :func:`mne.preprocessing.interpolate_bridged_electrodes` (MNE default
@@ -46,7 +66,9 @@ class Bridging(Check):
     ----------
     metrics_ : dict
         ``n_pairs``, ``pairs`` (channel-name pairs), ``groups`` (connected
-        bridged electrodes) and ``largest_group``.
+        bridged electrodes) and ``largest_group``, after confirmation;
+        ``n_candidates`` (pairs found by MNE) and ``unconfirmed`` (candidate
+        pairs with their correlation below ``min_correlation``).
 
     Notes
     -----
@@ -67,6 +89,8 @@ class Bridging(Check):
         l_freq: float = 0.5,
         h_freq: float = 30.0,
         epoch_duration: float = 2.0,
+        min_correlation: float | None = 0.98,
+        confirm_band: tuple[float, float] = (15.0, 30.0),
         bad_limit: int = 4,
     ) -> None:
         self.lm_cutoff = lm_cutoff
@@ -74,6 +98,8 @@ class Bridging(Check):
         self.l_freq = l_freq
         self.h_freq = h_freq
         self.epoch_duration = epoch_duration
+        self.min_correlation = min_correlation
+        self.confirm_band = confirm_band
         self.bad_limit = bad_limit
 
     def not_applicable(self, raw: BaseRaw) -> str | None:
@@ -107,12 +133,28 @@ class Bridging(Check):
             verbose=False,
         )
         names = eeg.ch_names
-        pairs = sorted(tuple(sorted((names[a], names[b]))) for a, b in bridged_idx)
+        candidates = [(int(a), int(b)) for a, b in bridged_idx]
+        unconfirmed: list[list[Any]] = []
+        if self.min_correlation is not None and candidates:
+            r = _correlations(eeg, candidates, *self.confirm_band)
+            unconfirmed = [
+                [names[a], names[b], round(float(ri), 3)]
+                for (a, b), ri in zip(candidates, r, strict=True)
+                if ri < self.min_correlation
+            ]
+            confirmed = [
+                p for p, ri in zip(candidates, r, strict=True) if ri >= self.min_correlation
+            ]
+        else:
+            confirmed = candidates
+        pairs = sorted(tuple(sorted((names[a], names[b]))) for a, b in confirmed)
         groups = _connected_groups(pairs)
-        self.bridged_idx_ = [(int(a), int(b)) for a, b in bridged_idx]
+        self.bridged_idx_ = confirmed
         self.ed_matrix_ = ed_matrix.astype(np.float32)
         self.info_ = eeg.info
         self.metrics_.update(
+            n_candidates=len(candidates),
+            unconfirmed=unconfirmed,
             n_pairs=len(pairs),
             pairs=[list(p) for p in pairs],
             groups=groups,
@@ -163,6 +205,18 @@ class Bridging(Check):
         )
         ax.legend(frameon=False)
         return fig
+
+
+def _correlations(
+    eeg: BaseRaw, pairs: list[tuple[int, int]], l_freq: float, h_freq: float
+) -> np.ndarray:
+    """Correlation of each channel pair after band-pass and average reference."""
+    data = eeg.get_data()
+    data = mne.filter.filter_data(data, eeg.info["sfreq"], l_freq, h_freq, verbose=False)
+    data = data - data.mean(axis=0, keepdims=True)
+    data = data - data.mean(axis=1, keepdims=True)
+    norms = np.sqrt((data**2).sum(axis=1))
+    return np.array([(data[a] @ data[b]) / (norms[a] * norms[b]) for a, b in pairs])
 
 
 class Impedance(Check):

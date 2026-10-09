@@ -15,6 +15,7 @@ from mne.io import BaseRaw
 from ..core import Step
 from ..core.step import Inst
 from ..io.system import MEG_SYSTEMS
+from ._utils import head_origin
 
 #: Head displacement (m) above which a warning is emitted: in simulations
 #: (tests/test_steps/test_head.py) the mapping error grows from ~1-3 % at
@@ -48,7 +49,8 @@ class HeadAlign(Step):
         see :func:`meeg_utils.io.average_dev_head_t`.
     origin : "auto" | tuple of float
         Origin of the spherical harmonic expansion in the head frame (m);
-        ``"auto"`` fits a sphere to the head digitization.
+        ``"auto"`` fits a sphere to the head digitization, or uses
+        (0, 0, 0.04) with a warning when there are no head-shape points.
     mode : {"accurate", "fast"}
         Accuracy of the Legendre expansion used for the field mapping.
 
@@ -96,7 +98,6 @@ class HeadAlign(Step):
         self.mode = mode
 
     def _fit(self, inst: Inst) -> None:
-        from mne.bem import _check_origin
         from mne.forward._field_interpolation import _map_meg_or_eeg_channels
 
         info = inst.info
@@ -107,13 +108,7 @@ class HeadAlign(Step):
             raise ValueError("HeadAlign needs good MEG channels.")
         dest = _as_dev_head_t(self.destination)
 
-        try:
-            origin = _check_origin(self.origin, info)
-        except Exception as exc:
-            raise ValueError(
-                "Could not fit the head origin to the digitization; pass origin=(x, y, z) "
-                f"in metres, head frame (e.g. (0.0, 0.0, 0.04)). Original error: {exc}"
-            ) from exc
+        origin = np.asarray(head_origin(self.origin, info))
 
         info_from = mne.pick_info(info, picks)
         info_to = info_from.copy()

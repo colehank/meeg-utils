@@ -31,6 +31,8 @@ class Dataset:
         Keep only this datatype.
     subjects, sessions, tasks, runs : list of str | None
         Keep only these labels (without the ``sub-`` etc. prefixes).
+        Empty-room recordings (``sub-emptyroom``) are left out unless
+        ``"emptyroom"`` is listed.
     exclude : list of str
         Recordings to leave out: any whose file name contains one of these
         strings (e.g. ``["sub-07", "task-rest_run-02"]``).
@@ -68,6 +70,8 @@ class Dataset:
         for path in find_recordings(self.root):
             if datatype is not None and path.datatype != datatype:
                 continue
+            if path.subject == "emptyroom" and not (subjects and "emptyroom" in subjects):
+                continue  # empty-room recordings are references, not data to process
             if any(
                 values is not None and str(getattr(path, entity)) not in {str(v) for v in values}
                 for entity, values in selection.items()

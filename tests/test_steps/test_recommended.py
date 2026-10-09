@@ -53,7 +53,7 @@ def test_eeg_preprocessing_parameters():
 )
 def test_meg_preprocessing_by_system(system, noise):
     pipe = Pipeline.preset("meg-erp", system=system)
-    assert [n for n, _ in pipe.steps] == [*noise, "highpass", "line_noise", "resample", "ica"]
+    assert [n for n, _ in pipe.steps] == [*noise, "highpass", "resample", "line_noise", "ica"]
     ica = pipe["ica"]
     assert pipe["resample"].sfreq == 250.0  # MEGnet's requirements
     assert (ica.n_components, ica.method, ica.labeler) == (20, "infomax", "megnet")

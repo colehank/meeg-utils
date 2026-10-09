@@ -103,6 +103,19 @@ class TestBridging:
     def test_no_false_bridges(self, eeg):
         assert qc.Bridging().compute(eeg).metrics_["n_pairs"] == 0
 
+    def test_small_signals_are_not_bridges(self):
+        """With 10x smaller signals every electrical distance falls below MNE's
+        absolute cutoff; the correlation check keeps only the real bridge."""
+        raw = make_eeg(blinks=False)
+        _bridge(raw, "F3", "Fz")
+        _bridge(raw, "Cz", "CP1", seed=2)
+        raw._data[:32] *= 0.1
+        check = qc.Bridging().compute(raw)
+        assert check.metrics_["n_candidates"] > 2
+        assert check.metrics_["pairs"] == [["CP1", "Cz"], ["F3", "Fz"]]
+        assert all(r < 0.98 for *_, r in check.metrics_["unconfirmed"])
+        assert qc.Bridging(min_correlation=None).compute(raw).metrics_["n_pairs"] > 2
+
     def test_groups(self):
         assert qc.eeg._connected_groups([("A", "B"), ("B", "C"), ("D", "E")]) == [
             ["A", "B", "C"],
@@ -213,6 +226,13 @@ class TestHeartRate:
         assert check.metrics_["heart_rate_bpm"] == pytest.approx(bpm, rel=0.03)
         assert check.metrics_["channel"] == "ECG"
         assert check.level == "ok"
+
+    def test_missed_beats(self):
+        """Every third beat missing: the rate stays plausible, the intervals do not."""
+        check = qc.HeartRate().compute(_ecg_raw(72.0, drop_every=3))
+        assert check.metrics_["irregular_fraction"] > 0.3
+        assert _levels(check)["irregular_fraction"] == "warn"
+        assert qc.HeartRate().compute(_ecg_raw(72.0)).metrics_["irregular_fraction"] == 0
 
     def test_implausible_rate(self):
         check = qc.HeartRate(max_bpm=60).compute(_ecg_raw(72.0))
@@ -360,11 +380,13 @@ def _muscle_raw() -> BaseRaw:
     return raw.set_montage("colin27_1020", verbose=False)
 
 
-def _ecg_raw(bpm: float) -> BaseRaw:
-    """EEG plus an ECG channel with QRS-like peaks at ``bpm``."""
+def _ecg_raw(bpm: float, drop_every: int = 0) -> BaseRaw:
+    """EEG plus an ECG channel with QRS-like peaks at ``bpm`` (every ``drop_every``-th missing)."""
     raw = make_eeg(line=False)
     t = raw.times
     beats = np.arange(0.5, t[-1], 60 / bpm)
+    if drop_every:
+        beats = np.delete(beats, np.arange(0, len(beats), drop_every))
     ecg = sum(np.exp(-((t - b) ** 2) / (2 * 0.01**2)) for b in beats) * 1e-3
     ecg = ecg + np.random.default_rng(0).normal(0, 2e-5, len(t))
     info = mne.create_info(["ECG"], SFREQ, "ecg")

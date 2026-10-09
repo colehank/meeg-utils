@@ -107,6 +107,15 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--out", type=Path, required=True, help="derivatives root")
     run.add_argument("--desc", default="preproc", help="BIDS desc entity of the outputs")
     run.add_argument(
+        "--set",
+        action="append",
+        default=[],
+        dest="set_params",
+        metavar="STEP__PARAM=VALUE",
+        help="change a step parameter (pipe.set_params), repeatable; values are YAML, e.g. "
+        "bridged__large_groups=bad, ica__threshold=0.9",
+    )
+    run.add_argument(
         "--epochs",
         nargs="?",
         const="preset",
@@ -212,6 +221,7 @@ def _run(args: argparse.Namespace) -> int:
         pipeline = Pipeline.from_yaml(args.config)
     if args.epochs is not None:
         return _run_dataset(args, pipeline, options)
+    _apply_set_params(args.set_params, [pipeline])
     records = process(
         pipeline,
         sources,
@@ -299,6 +309,7 @@ def _run_dataset(args: argparse.Namespace, pipeline: Any, options: dict[str, Any
         epochs = Pipeline.preset(args.preset, stage="epochs", **options)
     else:
         epochs = Pipeline.from_yaml(args.epochs)
+    _apply_set_params(args.set_params, [pipeline, epochs])
     dataset = Dataset(args.sources[0], datatype=args.datatype)
     result = process_dataset(
         dataset,
@@ -318,6 +329,20 @@ def _run_dataset(args: argparse.Namespace, pipeline: Any, options: dict[str, Any
 
 
 # ----------------------------------------------------------------------
+
+
+def _apply_set_params(items: list[str], pipelines: list[Any]) -> None:
+    """Apply --set STEP__PARAM=VALUE to the pipeline that has the parameter."""
+    import yaml
+
+    for item in items:
+        key, sep, value = item.partition("=")
+        if not sep or "__" not in key:
+            raise SystemExit(f"meu run: --set expects STEP__PARAM=VALUE, got {item!r}.")
+        target = next((p for p in pipelines if key in p.get_params(deep=True)), None)
+        if target is None:
+            raise SystemExit(f"meu run: no parameter {key!r} in the pipeline(s).")
+        target.set_params(**{key: yaml.safe_load(value)})
 
 
 def _preset_options(args: argparse.Namespace, sources: list[Any]) -> dict[str, Any]:

@@ -155,6 +155,20 @@ class TestLineNoise:
 
 
 class TestBadChannels:
+    def test_electrode_next_to_reference_is_not_bad(self):
+        """Recorded against a reference next to Cz, Cz carries almost no signal. On the
+        recording's own reference PREP's correlation criterion flags it; after PREP's
+        robust average reference (the default) it is a normal channel."""
+        raw = make_eeg(blinks=False)
+        rng = np.random.default_rng(0)
+        cz = raw.ch_names.index("Cz")
+        raw._data[:32] -= raw._data[cz].copy()
+        raw._data[cz] += rng.normal(0, 0.4e-6, raw.n_times)
+        assert S.BadChannels("prep", robust_reference=False).fit(raw).bads_ == ["Cz"]
+        step = S.BadChannels("prep").fit(raw)
+        assert step.bads_ == []
+        assert step.qc_["eeg_before_reference"] == ["Cz"]
+
     """BadChannels and Interpolate."""
 
     @pytest.mark.parametrize("ransac", [False, True])

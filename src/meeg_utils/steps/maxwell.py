@@ -11,6 +11,7 @@ from mne.io import BaseRaw
 
 from ..core import Step
 from ._plotting import plot_psd_comparison, psd_summary
+from ._utils import head_origin
 from .channels import _maxwell_file
 from .head import _as_dev_head_t, _movement
 
@@ -45,7 +46,8 @@ class Maxwell(Step):
         tSSS subspace correlation limit (MaxFilter default 0.98).
     origin : "auto" | tuple of float
         Expansion origin (m) in ``coord_frame``; ``"auto"`` fits a sphere to
-        the head digitization.
+        the head digitization (or uses (0, 0, 0.04) with a warning when there
+        are no head-shape points).
     int_order, ext_order : int
         Orders of the internal and external expansions (defaults 8 and 3,
         as MaxFilter).
@@ -203,7 +205,7 @@ class Maxwell(Step):
             _check_st_duration(self.st_duration, info["sfreq"])
         out = maxwell_filter(
             inst,
-            origin=self.origin,
+            origin=head_origin(self.origin, info) if self.coord_frame == "head" else self.origin,
             int_order=self.int_order,
             ext_order=self.ext_order,
             calibration=self.calibration_,

@@ -240,3 +240,18 @@ class TestAverageDevHeadT:
     def test_empty(self):
         with pytest.raises(ValueError, match="at least one"):
             average_dev_head_t([])
+
+
+def test_origin_without_head_shape(simulation):
+    """Recordings with only the fiducials digitized fall back to (0, 0, 0.04)."""
+    from meeg_utils.steps._utils import DEFAULT_ORIGIN, head_origin
+
+    measured, truth = simulation()
+    with measured.info._unlock():
+        measured.info["dig"] = [d for d in measured.info["dig"] if d["kind"] == 1]  # cardinal
+    with pytest.warns(UserWarning, match="Cannot fit the head origin"):
+        assert head_origin("auto", measured.info) == DEFAULT_ORIGIN
+    with pytest.warns(UserWarning, match="Cannot fit the head origin"):
+        step = S.HeadAlign(truth.info["dev_head_t"], mode="fast").fit(measured)
+    assert np.allclose(step.origin_, DEFAULT_ORIGIN)
+    assert head_origin((0.0, 0.01, 0.05), measured.info) == (0.0, 0.01, 0.05)

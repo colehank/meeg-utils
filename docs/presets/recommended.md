@@ -48,8 +48,8 @@ epochs = meu.epochs.combine([ep.fit_transform(run) for run in clean])
 | # | 步骤 | 参数 | 来源 |
 |---|---|---|---|
 | 1 | `highpass` | `Filter(0.1, None)` | 同 EEG（Tanner et al., 2015 的论证针对 ERP，同样适用于 ERF） |
-| 2 | `line_noise` | `LineNoise("zapline-plus")` | 同 EEG |
-| 3 | `resample` | `Resample(250)` | MEGnet 要求 250 Hz（Treacher et al., 2021, *NeuroImage* 241:118402；mne-icalabel 在输入不符时报警） |
+| 2 | `resample` | `Resample(250)` | MEGnet 要求 250 Hz（Treacher et al., 2021, *NeuroImage* 241:118402；mne-icalabel 在输入不符时报警）。放在去工频之前：在 HAD-MEEG 的 CTF 数据（273 通道、1200 Hz、6 分钟）上，ZapLine-plus 在原采样率下需要 15 GB 以上内存 |
+| 3 | `line_noise` | `LineNoise("zapline-plus")` | 同 EEG；50/60 Hz 及其低于 125 Hz 的谐波在 250 Hz 下保留 |
 | 4 | `ica` | `ICA(20, picks="meg", method="infomax", labeler="megnet", threshold=0.8)`，在 1–100 Hz 副本上拟合 | 20 个成分、Infomax、1–100 Hz：MEGnet 的训练条件（同上，mne-icalabel 检查这些条件）；`0.8` 同 EEG。MEGnet 还要求记录至少 60 s |
 
 MEG 与 EEG 同时采集时，MEG 预设只处理 MEG 通道（滤波和工频去除作用于全部通道）；需要分别处理时，用 `S.ByChannelType` 组合两个预设的步骤。

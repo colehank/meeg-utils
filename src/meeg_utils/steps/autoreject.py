@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+import mne
 import numpy as np
 from mne.epochs import BaseEpochs
 
@@ -90,6 +91,7 @@ class AutoReject(Step):
 
         if self.method not in AUTOREJECT_METHODS:
             raise ValueError(f"method must be one of {AUTOREJECT_METHODS}, got {self.method!r}")
+        inst = _for_autoreject(inst)
         picks = _data_picks(inst)
         ch_names = [inst.ch_names[p] for p in picks]
         if self.method == "local":
@@ -137,9 +139,18 @@ class AutoReject(Step):
         )
 
     def _transform(self, inst: BaseEpochs) -> BaseEpochs:
-        if self.method == "local":
+        if self.method != "local":
+            return inst.drop_bad(reject=self.thresholds_, verbose=False)
+        sub = _for_autoreject(inst)
+        if sub is inst:
             return self.ar_.transform(inst)
-        return inst.drop_bad(reject=self.thresholds_, verbose=False)
+        # autoreject ran on the data channels only: drop the same epochs from the
+        # full data and copy the repaired channels back
+        cleaned, log = self.ar_.transform(sub, return_log=True)
+        inst.drop(np.flatnonzero(log.bad_epochs), reason="AUTOREJECT", verbose=False)
+        idx = [inst.ch_names.index(ch) for ch in cleaned.ch_names]
+        inst._data[:, idx] = cleaned.get_data()
+        return inst
 
     def _plot_reject_log(self, inst: Any) -> Any:
         return self.reject_log_.plot(orientation="horizontal", show=False)
@@ -172,9 +183,20 @@ class AutoReject(Step):
         return fig
 
 
-def _data_picks(inst: BaseEpochs) -> np.ndarray:
-    import mne
+def _for_autoreject(inst: BaseEpochs) -> BaseEpochs:
+    """The epochs with only MEG/EEG data and MEG reference channels.
 
+    autoreject's MEG interpolation indexes the MEG (and reference) channels
+    by their position in the full channel list, which fails when other
+    channels (e.g. CTF's miscellaneous channels) come first.
+    """
+    keep = mne.pick_types(inst.info, meg=True, eeg=True, ref_meg=True, exclude=[])
+    if len(keep) == len(inst.ch_names):
+        return inst
+    return inst.copy().pick(keep)
+
+
+def _data_picks(inst: BaseEpochs) -> np.ndarray:
     return np.asarray(mne.pick_types(inst.info, meg=True, eeg=True, ref_meg=False, exclude="bads"))
 
 

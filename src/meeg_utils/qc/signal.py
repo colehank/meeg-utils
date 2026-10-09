@@ -702,16 +702,26 @@ class HeartRate(Check):
     the normal adult range is 60-100 bpm, and well-trained people can be
     below 60.
 
+    A plausible rate is not enough: missed or spurious beats make the
+    intervals between beats irregular (a missed beat doubles an interval).
+    Intervals more than 30 % away from the median interval are counted;
+    normal beat-to-beat variability at rest stays well below that.
+
     Parameters
     ----------
     min_bpm, max_bpm : float
         Plausible range of the detected heart rate.
+    max_irregular : float
+        Fraction of irregular intervals above which the detection is flagged
+        as unreliable. There is no published limit; 0.1 is this library's
+        choice. (Synthetic ECG from CTF magnetometers in HAD-MEEG gave a
+        plausible 86 bpm with intervals varying by 340 ms.)
 
     Attributes
     ----------
     metrics_ : dict
-        ``heart_rate_bpm``, ``n_beats``, ``rr_sd_ms`` and ``channel``
-        (``"synthetic"`` when derived from MEG).
+        ``heart_rate_bpm``, ``n_beats``, ``rr_sd_ms``, ``irregular_fraction``
+        and ``channel`` (``"synthetic"`` when derived from MEG).
 
     Notes
     -----
@@ -721,9 +731,12 @@ class HeartRate(Check):
     name: ClassVar[str] = "heart_rate"
     plot_kinds: ClassVar[dict[str, bool]] = {"heartbeats": False}
 
-    def __init__(self, *, min_bpm: float = 40.0, max_bpm: float = 120.0) -> None:
+    def __init__(
+        self, *, min_bpm: float = 40.0, max_bpm: float = 120.0, max_irregular: float = 0.1
+    ) -> None:
         self.min_bpm = min_bpm
         self.max_bpm = max_bpm
+        self.max_irregular = max_irregular
 
     def not_applicable(self, raw: BaseRaw) -> str | None:
         """Return why the check cannot run on ``raw``, or ``None`` if it can.
@@ -759,6 +772,17 @@ class HeartRate(Check):
             rr_sd_ms=round(float(np.std(rr) * 1000), 1) if len(rr) else None,
             channel=channel,
         )
+        if len(rr):
+            irregular = float(np.mean(np.abs(rr / np.median(rr) - 1) > 0.3))
+            self.metrics_["irregular_fraction"] = round(irregular, 3)
+            self._judge(
+                "irregular_fraction",
+                round(irregular, 3),
+                warn=self.max_irregular,
+                what="beat intervals > 30 % from the median",
+                detail="missed or spurious beats: heartbeat detection is unreliable "
+                f"({channel} ECG); do not rely on ECG-based artifact detection",
+            )
         self._judge(
             "heart_rate_low",
             round(bpm, 1),

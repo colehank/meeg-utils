@@ -192,6 +192,26 @@ class TestAutoReject:
         data[10:15, epochs.ch_names.index("Cz"), : data.shape[-1] // 2] -= 300e-6
         return epochs
 
+    def test_other_channels_first(self, dirty):
+        """Channels other than MEG/EEG before the data (as CTF's misc channels) are
+        kept; autoreject repairs and drops epochs as on the data channels alone."""
+        misc = mne.EpochsArray(
+            np.random.default_rng(0).normal(size=(len(dirty), 1, len(dirty.times))),
+            mne.create_info(["MISC001"], dirty.info["sfreq"], "misc"),
+            events=dirty.events, tmin=dirty.tmin, event_id=dirty.event_id, verbose=False,
+        )  # fmt: skip
+        mixed = misc.add_channels([dirty], force_update_info=True)
+        assert mixed.ch_names[0] == "MISC001"
+        step = S.AutoReject("local", n_interpolate=[1, 4], consensus=[0.5], cv=3, random_state=0)
+        out = step.fit_transform(mixed)
+        assert out.ch_names == mixed.ch_names
+        expected = S.AutoReject(
+            "local", n_interpolate=[1, 4], consensus=[0.5], cv=3, random_state=0
+        ).fit_transform(dirty)
+        assert np.array_equal(out.selection, expected.selection)
+        assert np.allclose(out.get_data(dirty.ch_names), expected.get_data())
+        assert np.array_equal(out.get_data("MISC001"), mixed.get_data("MISC001")[out.selection])
+
     def test_global_drops_artifact_epochs(self, dirty):
         step = S.AutoReject("global", random_state=0)
         out = step.fit_transform(dirty)

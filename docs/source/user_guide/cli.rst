@@ -46,6 +46,10 @@ command resumes). ``--epochs`` alone uses the epochs stage of ``--preset``;
 ``--epochs epochs.yaml`` a configuration file. The log of every run and
 session is written to ``<out>/meu_batch.csv``.
 
+Step parameters are changed with ``--set STEP__PARAM=VALUE`` (as
+``pipe.set_params``), e.g. ``--set ica__threshold=0.9`` or
+``--set bridged__large_groups=bad``.
+
 ``pipeline.yaml`` is written by :meth:`meeg_utils.Pipeline.to_yaml`. Each
 recording is processed separately (:func:`meeg_utils.process`); the exit
 status is 1 if any recording failed.

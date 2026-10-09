@@ -108,8 +108,10 @@ def _preprocessing(datatype: str, system: str | None) -> Pipeline:
         [
             *noise,
             ("highpass", S.Filter(HIGHPASS, None)),
-            ("line_noise", S.LineNoise("zapline-plus")),
+            # resample first: ZapLine-plus on 273 channels at 1200 Hz (HAD-MEEG, 6 min)
+            # needed more than 15 GB of memory; MEGnet needs 250 Hz anyway
             ("resample", S.Resample(MEGNET_SFREQ)),
+            ("line_noise", S.LineNoise("zapline-plus")),
             (
                 "ica",
                 S.ICA(
@@ -194,7 +196,7 @@ def meg_erp(**kwargs: Any) -> Pipeline:
     Preprocessing: system-specific noise reduction (Neuromag: Maxwell bad
     channels and SSS; CTF: Maxwell bad channels, interpolation, grade-3
     synthetic gradiometers; KIT: reference regression), 0.1 Hz high-pass,
-    ZapLine-plus, 250 Hz, 20-component Infomax ICA labelled with MEGnet.
+    250 Hz, ZapLine-plus, 20-component Infomax ICA labelled with MEGnet.
     Epochs: as for EEG, after aligning to ``head_destination`` when given.
     """
     return recommended("erp", datatype="meg", **kwargs)

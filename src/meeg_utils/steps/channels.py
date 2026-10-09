@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import Any, ClassVar
 
 import numpy as np
@@ -11,6 +12,7 @@ from ..core import Step
 from ..core.step import Inst
 from ..io import get_datatypes
 from ._plotting import plot_sensor_groups
+from ._utils import head_origin
 
 #: PREP criteria shown in the "scores" figure: diagnostic, label, threshold (PyPREP defaults).
 _PREP_SCORES = {
@@ -45,12 +47,22 @@ class BadChannels(Step):
           because no validated default exists for them.
     ransac : bool
         PREP: also run RANSAC, which needs electrode positions.
+    robust_reference : bool
+        PREP: detect the bad channels after PREP's robust average reference
+        (pyprep's ``Reference``: iteratively re-reference to the average of
+        the channels not yet found bad), as the PREP paper does. Without it,
+        detection runs on the recording's own reference, which flags
+        channels next to the reference electrode (their signals are small and
+        poorly correlated with the others; seen in HAD-MEEG, where C1 and Cz
+        record about 0.4 µV against 2-3 µV elsewhere). The data themselves
+        are not re-referenced.
     random_state : int | None
         PREP: seed for RANSAC.
     reject_by_annotation : {"omit", None}
         PREP: whether to ignore ``BAD_`` annotated segments.
     origin : str | tuple
-        Maxwell: head origin, ``"auto"`` fits it to the digitization.
+        Maxwell: head origin, ``"auto"`` fits it to the digitization (or uses
+        (0, 0, 0.04) with a warning when there are no head-shape points).
     cross_talk, calibration : "auto" | str | None
         Maxwell, Neuromag only: cross-talk and fine-calibration files.
         ``"auto"`` (default) finds them in the BIDS dataset of the recording
@@ -68,7 +80,11 @@ class BadChannels(Step):
         Newly detected bad channels.
     qc_ : dict
         ``previous_bads`` and, per modality, ``bads``, ``n_bads``,
-        ``fraction`` and ``by_criterion``.
+        ``fraction`` and ``by_criterion``; with the robust reference,
+        ``eeg_before_reference`` (channels PREP flags on the original
+        reference, for comparison); for MEG, ``noisy_references``
+        (reference sensors Maxwell flags: reported with a warning, not
+        marked bad, as they cannot be interpolated).
     scores_ : dict
         Per-channel detection scores and thresholds, per criterion.
 
@@ -87,6 +103,7 @@ class BadChannels(Step):
         method: str = "auto",
         *,
         ransac: bool = True,
+        robust_reference: bool = True,
         random_state: int | None = 42,
         reject_by_annotation: str | None = None,
         origin: str | tuple[float, float, float] = "auto",
@@ -97,6 +114,7 @@ class BadChannels(Step):
     ) -> None:
         self.method = method
         self.ransac = ransac
+        self.robust_reference = robust_reference
         self.random_state = random_state
         self.reject_by_annotation = reject_by_annotation
         self.origin = origin
@@ -149,18 +167,39 @@ class BadChannels(Step):
                     "(raw.set_montage) or use BadChannels(ransac=False)."
                 )
         manual = [ch for ch in inst.info["bads"] if ch in eeg.ch_names]
-        eeg.info["bads"] = []
-        finder = NoisyChannels(
-            eeg,
-            do_detrend=True,
-            random_state=self.random_state,
-            ransac=self.ransac,
-            bad_by_manual=manual or None,
-            reject_by_annotation=self.reject_by_annotation,
-        )
-        finder.find_all_bads(ransac=self.ransac)
+        if self.robust_reference:
+            from pyprep.reference import Reference as _RobustReference
+
+            eeg.info["bads"] = manual
+            reference = _RobustReference(
+                eeg,
+                params={"ref_chs": eeg.ch_names, "reref_chs": eeg.ch_names},
+                ransac=self.ransac,
+                random_state=self.random_state,
+                reject_by_annotation=self.reject_by_annotation,
+            )
+            reference.perform_reference(interpolate_bads=False)
+            detected = reference.noisy_channels_before_interpolation
+            extra = reference._extra_info["interpolated"] or {}
+            self.qc_["eeg_before_reference"] = sorted(
+                {str(c) for k, v in reference.noisy_channels_original.items()
+                 if k not in ("bad_all", "bad_by_manual") for c in v}
+            )  # fmt: skip
+        else:
+            eeg.info["bads"] = []
+            finder = NoisyChannels(
+                eeg,
+                do_detrend=True,
+                random_state=self.random_state,
+                ransac=self.ransac,
+                bad_by_manual=manual or None,
+                reject_by_annotation=self.reject_by_annotation,
+            )
+            finder.find_all_bads(ransac=self.ransac)
+            detected = finder.get_bads(as_dict=True)
+            extra = finder._extra_info
         for name, (group, key, label, threshold) in _PREP_SCORES.items():
-            values = finder._extra_info.get(group, {}).get(key)
+            values = extra.get(group, {}).get(key)
             if values is not None and np.ndim(values) == 1 and len(values) == len(eeg.ch_names):
                 self.scores_[f"PREP {name}"] = {
                     "ch_names": list(eeg.ch_names),
@@ -170,7 +209,7 @@ class BadChannels(Step):
                 }
         by_criterion = {
             key.removeprefix("bad_by_"): sorted(map(str, chs))
-            for key, chs in finder.get_bads(as_dict=True).items()
+            for key, chs in detected.items()
             if key not in ("bad_all", "bad_by_manual")
         }
         found = sorted({ch for chs in by_criterion.values() for ch in chs} - set(manual))
@@ -191,7 +230,7 @@ class BadChannels(Step):
         noisy, flat, scores = find_bad_channels_maxwell(
             meg,
             limit=self.limit,
-            origin=self.origin,
+            origin=head_origin(self.origin, inst.info),
             cross_talk=cross_talk,
             calibration=calibration,
             h_freq=self.h_freq,
@@ -208,10 +247,21 @@ class BadChannels(Step):
                 "threshold": float(np.nanmax(limits[sel])),
                 "label": "max noisy score over time bins",
             }
-        found = sorted(set(noisy) | set(flat))
+        refs = set(meg.copy().pick("ref_meg", exclude=[]).ch_names) if "ref_meg" in meg else set()
+        bad_refs = sorted((set(noisy) | set(flat)) & refs)
+        if bad_refs:  # cannot be interpolated; CTF compensation spreads their noise
+            self.qc_["noisy_references"] = bad_refs
+            warnings.warn(
+                f"Reference sensors {bad_refs} look noisy or flat. They are not marked bad (they "
+                "cannot be interpolated), but gradient compensation spreads their noise to every "
+                "channel: inspect them, and compare compensation grades.",
+                stacklevel=5,
+            )
+        found = sorted((set(noisy) | set(flat)) - refs)
         found = [ch for ch in found if ch not in inst.info["bads"]]
         n_meg = len(meg.copy().pick("meg", exclude=[]).ch_names)
-        return found, {"noisy": sorted(noisy), "flat": sorted(flat)}, n_meg
+        by = {"noisy": sorted(set(noisy) - refs), "flat": sorted(set(flat) - refs)}
+        return found, by, n_meg
 
     def _plot_sensors(self, inst: BaseRaw | None) -> Any:
         return plot_sensor_groups(
@@ -274,7 +324,8 @@ class Interpolate(Step):
         Interpolation method per channel type; ``None`` uses
         ``{"eeg": "spline", "meg": "MNE"}``.
     origin : str | tuple
-        Head origin; ``"auto"`` fits it to the digitization.
+        Head origin; ``"auto"`` fits it to the digitization (or uses
+        (0, 0, 0.04) with a warning when there are no head-shape points).
     reset_bads : bool
         Whether to clear the interpolated channels from ``info["bads"]``.
     exclude : list of str
@@ -316,7 +367,7 @@ class Interpolate(Step):
             inst.interpolate_bads(
                 reset_bads=self.reset_bads,
                 mode="accurate",
-                origin=self.origin,
+                origin=head_origin(self.origin, inst.info),
                 method=self.method or {"eeg": "spline", "meg": "MNE"},
                 exclude=list(self.exclude),
                 verbose=False,

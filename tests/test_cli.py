@@ -255,3 +255,29 @@ class TestReportCommand:
             main(["report", str(tmp_path / "nope.fif")])
         with pytest.raises(ValueError, match="No meeg-utils derivatives"):
             main(["report", str(tmp_path)])
+
+
+def test_set_step_parameters(recording, tmp_path):
+    config = tmp_path / "pipeline.yaml"
+    meu.Pipeline([("filter", S.Filter(1.0, 40.0))]).to_yaml(config)
+    out = tmp_path / "deriv"
+    args = ["run", str(config), "--sources", str(recording), "--out", str(out), "-q",
+            "--set", "filter__h_freq=30"]  # fmt: skip
+    assert main(args) == 0
+    raw = mne.io.read_raw_fif(out / "rec_raw_desc-preproc_eeg.fif", verbose=False)
+    assert raw.info["lowpass"] == 30.0
+    with pytest.raises(SystemExit, match="no parameter"):
+        main(
+            [
+                "run",
+                str(config),
+                "--sources",
+                str(recording),
+                "--out",
+                str(out),
+                "--set",
+                "ica__x=1",
+            ]
+        )
+    with pytest.raises(SystemExit, match="STEP__PARAM"):
+        main(["run", str(config), "--sources", str(recording), "--out", str(out), "--set", "oops"])
