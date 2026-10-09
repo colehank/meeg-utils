@@ -40,9 +40,13 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
 - **Steps** (`meu.steps`): `Filter`, `Resample`, `LineNoise` (ZapLine,
   ZapLine-plus, notch), `BadChannels` (PREP, Maxwell), `Interpolate`,
   `Reference`, `ICA` (ICLabel / MEGnet labelling, manual relabelling),
-  `HeadAlign` (map MEG runs to a common head position), `BridgedElectrodes`;
-  epoching with `Epoch`, `Baseline`, `AutoReject`, and `meu.epochs.combine`
-  for runs.
+  `BridgedElectrodes`, `BadSegments`; system-specific noise reduction with
+  `Maxwell` (SSS/tSSS, movement compensation), `HFC` (OPM), `Regression`
+  (reference sensors, EOG), `ASR` and `SNS` (mne-denoise); `HeadAlign` (map
+  MEG runs to a common head position); `ByChannelType` (separate steps for
+  MEG and EEG); epoching with `Epoch`, `FixedLengthEpochs`, `Baseline`,
+  `AutoReject`, and `meu.epochs.combine` for runs. Each validated on
+  simulated data with known sources and artifacts.
 - **Pipelines** follow scikit-learn: parameters are set in the constructor,
   `fit` / `transform` / `fit_transform` are the only entry points,
   `set_params(ica__threshold=0.9)`, `clone`, slicing, YAML configurations.
@@ -52,20 +56,30 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
 - **Acquisition quality control** (`meu.qc`): bridged electrodes,
   impedances, flat/clipped channels, outlying channels, line and other
   narrowband noise, muscle, blink and heart rate (is the EOG/ECG working?),
-  MEG head movement and HPI coils, digitization, event counts. Thresholds
+  MEG head movement, HPI coils and their SNR, SQUID jumps, the session's
+  empty room, digitization, event counts, photodiode delay and jitter,
+  BIDS metadata against the data. Thresholds
   are documented with their source; `meu.qc.inspect_dataset` flags
   outlying recordings across a dataset; `meu.report.build` writes HTML
   reports.
 - **Processing quality control**: `qc_` metrics on every step and `plot()`
   figures (spectra before/after, bad-channel scores, sensor maps, ICA
   components, head positions, ...).
-- **Command line**: `meu qc /data/bids --out qc/` and
-  `meu run --preset had-meeg --datatype eeg --sources /data/bids --out derivatives/`.
-- **Presets**: `meu.Pipeline.preset("had-meeg", datatype="meg")` reproduces
-  the [HAD-MEEG](https://github.com/colehank/HAD-MEEG) preprocessing with its
-  known issues fixed; see [docs/presets/had-meeg.md](docs/presets/had-meeg.md).
-- **Batch processing**: `meu.process(pipe, recordings, root, n_jobs=8)` fits
-  one copy of the pipeline per recording and saves BIDS derivatives.
+- **Command line**: `meu qc /data/bids --out qc/`;
+  `meu run --preset eeg-erp --epochs --option "event_id=[target, standard]" --sources /data/bids --out derivatives/`;
+  `meu preset` (list, export as YAML); `meu report derivatives/` (summary
+  of every run, outlying runs flagged).
+- **Presets**: recommended `eeg-erp`, `eeg-rest`, `meg-erp`, `meg-rest`
+  (MEG by system), every parameter traced to a published default
+  ([docs/presets/recommended.md](docs/presets/recommended.md)); and
+  `had-meeg`, the [HAD-MEEG](https://github.com/colehank/HAD-MEEG)
+  preprocessing with its known issues fixed
+  ([docs/presets/had-meeg.md](docs/presets/had-meeg.md)).
+- **Whole datasets**: `meu.Dataset` selects BIDS recordings;
+  `meu.process_dataset` preprocesses every run, epochs it and combines the
+  runs of each session (MEG aligned to the average head position),
+  resumes interrupted batches and collects failures. `meu.process` runs one
+  pipeline over any list of files.
 - **Any system MNE reads**: the acquisition system (Neuromag/MEGIN, CTF, KIT,
   BTi, Artemis123, OPM, EEG) is detected from the data; steps with
   system-specific methods refuse systems they have not been validated for
