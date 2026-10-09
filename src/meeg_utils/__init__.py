@@ -7,12 +7,17 @@ including preprocessing, epoching, and feature extraction.
 __version__ = "0.1.0"
 
 # Initialize logging system when package is imported
+from . import io
+from .core import Pipeline, Step
 from .logger import logger, setup_logging
 from .preprocessing import BatchPreprocessingPipeline, PreprocessingPipeline
 
 __all__ = [
     "BatchPreprocessingPipeline",
+    "Pipeline",
     "PreprocessingPipeline",
+    "Step",
+    "io",
     "logger",
     "setup_logging",
 ]
