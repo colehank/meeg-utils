@@ -80,6 +80,14 @@ Available steps
        MEG channels, optional movement compensation (``head_pos="chpi"``)
        and transformation to a destination head position.
      - ``psd``, ``head_positions``\ :sup:`†`, ``displacement``\ :sup:`†`
+   * - :class:`~meeg_utils.steps.HFC`
+     - OPM: homogeneous (or harmonic) field correction; warns on single-axis
+       arrays, where it also removes brain signal.
+     - ``psd``
+   * - :class:`~meeg_utils.steps.Regression`
+     - Regress reference sensors (KIT/Ricoh, BTi, Artemis123, CTF grade 0)
+       or EOG/ECG channels out of the data.
+     - ``psd``
    * - :class:`~meeg_utils.steps.BridgedElectrodes`
      - Detect and interpolate bridged EEG electrodes.
      - ``topomap``, ``distances``

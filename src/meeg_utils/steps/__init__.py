@@ -9,11 +9,14 @@ from .compose import ByChannelType
 from .epochs import Baseline, DropChannels, Epoch
 from .filtering import Filter, Resample
 from .head import HeadAlign
+from .hfc import HFC
 from .ica import ICA
 from .line_noise import LineNoise
 from .maxwell import Maxwell
+from .regression import Regression
 
 __all__ = [
+    "HFC",
     "ICA",
     "AutoReject",
     "BadChannels",
@@ -28,5 +31,6 @@ __all__ = [
     "LineNoise",
     "Maxwell",
     "Reference",
+    "Regression",
     "Resample",
 ]

@@ -29,6 +29,8 @@ Processing steps (``meeg_utils.steps``)
    steps.HeadAlign
    steps.Maxwell
    steps.ByChannelType
+   steps.HFC
+   steps.Regression
    steps.BridgedElectrodes
    steps.DropChannels
    steps.Epoch

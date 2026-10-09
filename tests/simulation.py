@@ -164,3 +164,53 @@ def make_chpi(fname) -> tuple[BaseRaw, Any, np.ndarray]:
         return np.interp(t, times, np.linspace(0, 0.008, len(times)))
 
     return raw, truth, pos
+
+
+def make_opm(*, axes: int = 3, n_locations: int = 40, seed: int = 0) -> tuple[mne.Info, np.ndarray]:
+    """An on-head OPM array and the brain signal of 20 dipoles it records.
+
+    Sensors sit 11 cm from the head centre on the upper hemisphere; each
+    location has ``axes`` sensors (1: radial only, 2: radial + one tangential,
+    3: triaxial). Returns the info and the ground-truth data (5 s at 500 Hz).
+    """
+    from mne.io.constants import FIFF
+
+    rng = np.random.default_rng(seed)
+    center = np.array([0.0, 0.0, 0.04])
+    i = np.arange(n_locations)
+    z = 1 - (i + 0.5) / n_locations
+    theta = np.pi * (3 - np.sqrt(5)) * i  # golden-angle spiral
+    radial = np.c_[np.sqrt(1 - z**2) * np.cos(theta), np.sqrt(1 - z**2) * np.sin(theta), z]
+    sensors = []
+    for d in radial:
+        e1 = np.cross(d, [0.0, 0.0, 1.0]) if abs(d[2]) < 0.99 else np.array([1.0, 0.0, 0.0])
+        e1 /= np.linalg.norm(e1)
+        for normal in [d, e1, np.cross(d, e1)][:axes]:
+            sensors.append((center + 0.11 * d, normal))
+    info = mne.create_info([f"OPM{k:03d}" for k in range(len(sensors))], 500.0, "mag")
+    for ch, (pos, normal) in zip(info["chs"], sensors, strict=True):
+        ex = np.cross(normal, [0.0, 0.0, 1.0])
+        ex = ex / np.linalg.norm(ex) if np.linalg.norm(ex) > 1e-6 else np.array([1.0, 0.0, 0.0])
+        ch["coil_type"] = FIFF.FIFFV_COIL_QUSPIN_ZFOPM_MAG2
+        ch["loc"][:12] = np.r_[pos, ex, np.cross(normal, ex), normal]
+    with info._unlock():
+        info["dev_head_t"] = mne.transforms.Transform("meg", "head", np.eye(4))
+
+    n = 20
+    direction = rng.normal(size=(n, 3))
+    direction /= np.linalg.norm(direction, axis=1, keepdims=True)
+    direction[:, 2] = np.abs(direction[:, 2])
+    ori = rng.normal(size=(n, 3))
+    ori -= (ori * direction).sum(1, keepdims=True) * direction
+    ori /= np.linalg.norm(ori, axis=1, keepdims=True)
+    dipoles = mne.Dipole(
+        np.zeros(n),
+        center + direction * rng.uniform(0.03, 0.07, (n, 1)),
+        np.ones(n),
+        ori,
+        np.ones(n),
+    )
+    sphere = mne.make_sphere_model(center, head_radius=0.09, verbose=False)
+    fwd, _ = mne.make_forward_dipole(dipoles, sphere, info, verbose=False)
+    truth = fwd["sol"]["data"] @ (rng.normal(size=(n, 2500)) * 1e-8)
+    return info, truth
