@@ -90,3 +90,44 @@ def make_eeg(
         mne.Annotations([15.0, 40.0], [1.0, 1.0], ["stim", "stim"], orig_time=raw.info["meas_date"])
     )
     return raw
+
+
+#: Peak amplitude (V) of the simulated P300 at Pz for targets and standards.
+P300 = {"target": 10e-6, "standard": 3e-6}
+
+
+def make_erp(*, n_trials: int = 60, seed: int = 0, erp: bool = True) -> BaseRaw:
+    """Simulate an oddball EEG experiment with a known ERP.
+
+    Background as :func:`make_eeg` (no line noise, no blinks); every 0.9-1.1 s a
+    ``stim/target`` (1 in 4) or ``stim/standard`` event (jittered by up to 0.2 s), followed by a
+    posterior positivity peaking at 300 ms whose amplitude at Pz is ``P300``.
+    With ``erp=False`` the same recording (same events) without the ERP.
+    """
+    raw = make_eeg(line=False, blinks=False, seed=seed)
+    rng = np.random.default_rng(seed + 100)
+    pos = np.array([raw.info["chs"][i]["loc"][:3] for i in range(len(EEG_CHANNELS))])
+    pz = pos[EEG_CHANNELS.index("Pz")]
+    topography = np.exp(-np.sum((pos - pz) ** 2, axis=1) / (2 * 0.05**2))
+    kernel_t = np.arange(int(0.8 * SFREQ)) / SFREQ
+    wave = np.exp(-((kernel_t - 0.3) ** 2) / (2 * 0.06**2))
+    onsets, names = [], []
+    for k in range(n_trials):
+        onset = 2.0 + 0.9 * k + rng.uniform(0, 0.2)  # jitter: background is not phase-locked
+        name = "stim/target" if rng.random() < 0.25 else "stim/standard"
+        start = round(onset * SFREQ)
+        if erp:
+            raw._data[: len(EEG_CHANNELS), start : start + len(wave)] += (
+                np.outer(topography, wave) * P300[name.split("/")[1]]
+            )
+        onsets.append(onset)
+        names.append(name)
+    raw.set_annotations(
+        mne.Annotations(  # onsets relative to meas_date; the data start at first_samp
+            np.array(onsets) + raw.first_time,
+            [0.0] * len(onsets),
+            names,
+            orig_time=raw.info["meas_date"],
+        )
+    )
+    return raw

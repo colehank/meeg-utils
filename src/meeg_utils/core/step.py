@@ -60,6 +60,8 @@ class Step(PlotMixin, BaseEstimator):
     changes_channels: ClassVar[bool] = False
     #: Whether the step may change the time axis (e.g. resampling, cropping).
     changes_times: ClassVar[bool] = False
+    #: Whether the step may drop epochs (e.g. artifact rejection).
+    drops_epochs: ClassVar[bool] = False
 
     def fit(self, inst: Inst, y: Any = None, *, system: str | None = None) -> Self:
         """Learn the step's state from the data.

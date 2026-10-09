@@ -102,7 +102,7 @@ def check_step(step: Step, inst: Inst) -> None:
         )
 
     if not step.changes_times and step.returns is None:
-        _assert_same_times(inst, out, name)
+        _assert_same_times(inst, out, name, step)
 
     # 8. Figures
     _check_plots(step, inst, name)
@@ -251,7 +251,7 @@ def _assert_unchanged(inst: Inst, snap: dict, msg: str) -> None:
         assert _annotation_tuple(inst) == snap["annotations"], f"{msg} (annotations)"
 
 
-def _assert_same_times(inst: Inst, out: Inst, name: str) -> None:
+def _assert_same_times(inst: Inst, out: Inst, name: str, step: Step) -> None:
     msg = f"{name}: time axis changed without declaring changes_times"
     assert out.info["sfreq"] == inst.info["sfreq"], f"{msg} (sfreq)"
     assert out.info["meas_date"] == inst.info["meas_date"], f"{msg} (meas_date)"
@@ -264,7 +264,13 @@ def _assert_same_times(inst: Inst, out: Inst, name: str) -> None:
     elif isinstance(inst, BaseEpochs | Evoked):
         assert np.array_equal(out.times, inst.times), f"{msg} (times)"
     if isinstance(inst, BaseEpochs):
-        assert np.array_equal(out.events, inst.events), f"{msg} (events)"
+        if step.drops_epochs:
+            kept = {tuple(e) for e in inst.events}
+            assert all(tuple(e) in kept for e in out.events), (
+                f"{name}: epochs were changed, not dropped"
+            )
+        else:
+            assert np.array_equal(out.events, inst.events), f"{msg} (events)"
 
 
 def _annotation_tuple(raw: BaseRaw) -> tuple:
