@@ -150,7 +150,10 @@ class LineNoise(Step):
 
     def _plot_psd(self, inst: BaseRaw | None) -> Any:
         if not hasattr(self, "psd_"):
-            raise ValueError("The 'psd' plot needs the step to have transformed data.")
+            raise ValueError(
+                "The 'psd' plot needs the step to have transformed data: use fit_transform, "
+                "or pipeline.plot(inst=data)."
+            )
         sfreq = 2 * float(next(iter(self.psd_.values()))["freqs"][-1])
         return plot_psd_comparison(
             self.psd_,

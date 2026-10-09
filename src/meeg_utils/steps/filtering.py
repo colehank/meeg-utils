@@ -159,7 +159,10 @@ class Filter(Step):
 
     def _plot_psd(self, inst: Inst | None) -> Any:
         if not hasattr(self, "psd_"):
-            raise ValueError("The 'psd' plot needs the step to have transformed data.")
+            raise ValueError(
+                "The 'psd' plot needs the step to have transformed data: use fit_transform, "
+                "or pipeline.plot(inst=data)."
+            )
         return plot_psd_comparison(
             self.psd_,
             title=f"Filter {self.l_freq}-{self.h_freq} Hz",

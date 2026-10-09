@@ -25,7 +25,12 @@ NEUROMAG_SHA256 = "b1dbe0150bd036cc2446f352265cdaf7deb7fa8eafb16eec6c64e403f4176
 
 
 def make_eeg(
-    *, line: bool = True, blinks: bool = True, bad: bool = False, seed: int = 0
+    *,
+    line: bool = True,
+    blinks: bool = True,
+    bad: bool = False,
+    seed: int = 0,
+    line_amplitude: float = 20e-6,
 ) -> BaseRaw:
     """Simulate EEG with known sources.
 
@@ -71,7 +76,7 @@ def make_eeg(
         data += np.outer(y**3, blink) * 100e-6
 
     if line:
-        data += np.outer(0.5 + y, np.sin(2 * np.pi * 50 * t + 0.4)) * 20e-6
+        data += np.outer(0.5 + y, np.sin(2 * np.pi * 50 * t + 0.4)) * line_amplitude
 
     eog = blink * 300e-6 + rng.normal(0, 2e-6, n)
     raw._data[:] = np.vstack([data, eog])

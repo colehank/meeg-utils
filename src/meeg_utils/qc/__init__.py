@@ -14,6 +14,7 @@ or one at a time, with your own thresholds::
 from __future__ import annotations
 
 from ._base import LEVELS, Check, Finding, QCReport, inspect
+from .dataset import OUTLIER_Z, DatasetQC, find_recordings, inspect_dataset
 from .eeg import Bridging, Impedance
 from .events import Events
 from .head import Digitization, HeadMovement
@@ -37,10 +38,12 @@ DEFAULT_CHECKS: tuple[type[Check], ...] = (
 __all__ = [
     "DEFAULT_CHECKS",
     "LEVELS",
+    "OUTLIER_Z",
     "Amplitude",
     "Blinks",
     "Bridging",
     "Check",
+    "DatasetQC",
     "Digitization",
     "Events",
     "Finding",
@@ -51,5 +54,7 @@ __all__ = [
     "NarrowbandNoise",
     "OutlierChannels",
     "QCReport",
+    "find_recordings",
     "inspect",
+    "inspect_dataset",
 ]

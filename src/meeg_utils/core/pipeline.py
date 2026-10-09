@@ -192,7 +192,8 @@ class Pipeline(BaseEstimator):
             Data for the figures that need it. It is run through the fitted
             steps (``transform``, no refitting), so each step plots the data
             as that step received it. Without it, only figures that need no
-            data are drawn.
+            data are drawn, from what the steps recorded when they last
+            transformed data (after ``fit``, the last step has not).
 
         Returns
         -------
@@ -206,12 +207,16 @@ class Pipeline(BaseEstimator):
             data, owned = _load(inst)
             data = data if owned else data.copy()
         figures = {}
-        for i, (name, step) in enumerate(self.steps):
+        for name, step in self.steps:
+            output = None
+            if data is not None:
+                # transform first: diagnostics recorded while transforming
+                # (e.g. spectra before/after) then describe this data
+                output = step.transform(data, copy=True)
             step_figures = step.plot(inst=data)
             if step_figures:
                 figures[name] = step_figures
-            if data is not None and i < len(self.steps) - 1:
-                data = step.transform(data, copy=False)
+            data = output
         return figures
 
     # ------------------------------------------------------------------

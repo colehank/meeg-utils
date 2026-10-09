@@ -325,7 +325,10 @@ class Interpolate(Step):
 
     def _plot_sensors(self, inst: Inst | None) -> Any:
         if not hasattr(self, "info_"):
-            raise ValueError("The 'sensors' plot needs the step to have transformed data.")
+            raise ValueError(
+                "The 'sensors' plot needs the step to have transformed data: use fit_transform, "
+                "or pipeline.plot(inst=data)."
+            )
         return plot_sensor_groups(
             self.info_, {"interpolated": self.qc_["interpolated"]}, title="Interpolated channels"
         )
