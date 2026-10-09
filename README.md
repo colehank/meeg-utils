@@ -40,7 +40,9 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
 - **Steps** (`meu.steps`): `Filter`, `Resample`, `LineNoise` (ZapLine,
   ZapLine-plus, notch), `BadChannels` (PREP, Maxwell), `Interpolate`,
   `Reference`, `ICA` (ICLabel / MEGnet labelling, manual relabelling),
-  `HeadAlign` (map MEG runs to a common head position), `BridgedElectrodes`.
+  `HeadAlign` (map MEG runs to a common head position), `BridgedElectrodes`;
+  epoching with `Epoch`, `Baseline`, `AutoReject`, and `meu.epochs.combine`
+  for runs.
 - **Pipelines** follow scikit-learn: parameters are set in the constructor,
   `fit` / `transform` / `fit_transform` are the only entry points,
   `set_params(ica__threshold=0.9)`, `clone`, slicing, YAML configurations.

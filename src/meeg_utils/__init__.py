@@ -11,7 +11,7 @@ try:
 except PackageNotFoundError:  # pragma: no cover - running from a source tree
     __version__ = "0.0.0"
 
-from . import io, presets, qc, report, steps
+from . import epochs, io, presets, qc, report, steps
 from .batch import process
 from .core import Pipeline, Step
 from .logger import log_to_file, logger, setup_logging, teardown_logging
@@ -19,6 +19,7 @@ from .logger import log_to_file, logger, setup_logging, teardown_logging
 __all__ = [
     "Pipeline",
     "Step",
+    "epochs",
     "io",
     "log_to_file",
     "logger",

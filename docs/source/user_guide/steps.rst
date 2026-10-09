@@ -75,6 +75,25 @@ Available steps
    * - :class:`~meeg_utils.steps.HeadAlign`
      - Map MEG data to another head position (e.g. the average over runs).
      - ``positions``
+   * - :class:`~meeg_utils.steps.BridgedElectrodes`
+     - Detect and interpolate bridged EEG electrodes.
+     - ``topomap``, ``distances``
+   * - :class:`~meeg_utils.steps.DropChannels`
+     - Remove named channels (e.g. mastoids before re-referencing).
+     -
+   * - :class:`~meeg_utils.steps.Epoch`
+     - Raw → Epochs around events (annotations or stimulus channel); event
+       codes fixed at fit; optional metadata from BIDS ``events.tsv``.
+     - ``drop_log``, ``evoked``
+   * - :class:`~meeg_utils.steps.Baseline`
+     - Baseline correction (mean, ratio, percent, z-score); refuses
+       per-epoch z-scores on baselines too short to estimate a standard
+       deviation, and offers a pooled scale.
+     -
+   * - :class:`~meeg_utils.steps.AutoReject`
+     - Learned rejection thresholds (autoreject): repair channels and drop
+       epochs (local), or one threshold per channel type (global).
+     - ``reject_log``, ``thresholds``
 
 \* needs data: ``step.plot(inst=...)``.
 
@@ -102,3 +121,16 @@ combining them:
 
 ``HeadAlign`` uses minimum-norm field mapping; in simulations it lowers the
 error caused by a 10 mm / 5° head movement from 32-49 % to 1-3 %.
+
+After epoching each run, combine them:
+
+.. code-block:: python
+
+   epoch = meu.Pipeline([("epoch", S.Epoch("stimulus", -0.2, 0.8)), ("ar", S.AutoReject())])
+   runs = [epoch.fit_transform(run) for run in preprocessed_runs]
+   epochs = meu.epochs.combine(runs)              # bad channels: union across runs
+
+:func:`meeg_utils.epochs.combine` checks that the runs share channels,
+sampling rate and epoch times, matches events by name (unifying their
+codes), and, for MEG, that their head positions differ by less than 2 mm
+(otherwise align them first).

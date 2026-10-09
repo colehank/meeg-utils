@@ -28,6 +28,11 @@ Processing steps (``meeg_utils.steps``)
    steps.ICA
    steps.HeadAlign
    steps.BridgedElectrodes
+   steps.DropChannels
+   steps.Epoch
+   steps.Baseline
+   steps.AutoReject
+   epochs.combine
 
 Reading and writing (``meeg_utils.io``)
 ---------------------------------------

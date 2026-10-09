@@ -90,9 +90,37 @@ pipe.plot(inst=raw) # 每一步的质量图
 - **CTF 补偿等级**：原代码在预处理中途调用 `apply_gradient_compensation(3)`（`pipe_single.py:174`），而 HAD-MEEG 的 CTF 数据本来就是 grade 3，这一步不起作用。预设保留这一步（`Reference(ctf_grade=3)`），等级的前后变化记录在 `qc_` 里。
 - **错误处理**：原来的批处理遇到异常只记一条日志就继续（`src/prep/pipe_batch.py:92`），最后可能悄悄少了几个 run。本库的 Step 和 Pipeline 遇错即抛出异常，不会跳过；之后的批处理命令（`meu run`）也会汇总报告每个失败的 run。
 
-## 3. 分段阶段（不在预设内）
+## 3. 分段阶段（`stage="epochs"`）
 
-以下问题出在原代码的分段阶段（`src/epo/epoching.py`）。meu 的分段模块还没有实现，这里先记录修正方案。
+原代码的分段阶段（`src/epo/epoching.py`）对应预设的 `stage="epochs"`，作用在预处理后的单个 run 上，最后用 `meu.epochs.combine` 合并同一被试的各个 run：
+
+```python
+import meeg_utils as meu
+
+# EEG
+epo = meu.Pipeline.preset("had-meeg", datatype="eeg", stage="epochs")
+runs = [epo.fit_transform(path) for path in preprocessed_eeg_runs]   # 每个 run 单独
+eeg_epochs = meu.epochs.combine(runs)                                  # 坏道取并集
+
+# MEG：先求各 run 的平均头位置，所有 run 对齐到它
+dest = meu.io.average_dev_head_t(preprocessed_meg_runs)
+epo = meu.Pipeline.preset("had-meeg", datatype="meg", stage="epochs", head_destination=dest)
+meg_epochs = meu.epochs.combine([epo.fit_transform(p) for p in preprocessed_meg_runs])
+```
+
+| # | 步骤名 | MEG | EEG |
+|---|---|---|---|
+| 1 | `drop_mastoids` | — | `DropChannels(["M1", "M2"])` |
+| 2 | `reference` | — | `Reference("average")` |
+| 3 | `lowpass` | `Filter(None, 40)` | 同左 |
+| 4 | `resample` | `Resample(200)` | 同左 |
+| 5 | `align` | `HeadAlign(head_destination)` | — |
+| 6 | `epoch` | `Epoch("video on", -0.1, 2.0)` | 同左 |
+| 7 | `baseline` | `Baseline((None, 0), "mean")` | 同左 |
+
+`combine` 会检查各 run 的通道、采样率、时间轴是否一致，按事件名称统一事件编码；MEG 各 run 的头位置相差超过 2 mm 时报错，并提示先用 `HeadAlign` 对齐。原代码的 `metadata`（来自单独的事件表）没有放进预设，需要时用 `Epoch(metadata=path)` 传入。
+
+与原代码的差异：
 
 ### 3.1 跨 run 头位置对齐的方向反了（高）
 
@@ -112,16 +140,17 @@ pipe.plot(inst=raw) # 每一步的质量图
   aligned = S.HeadAlign(dest, origin=(0.0, 0.0, 0.04)).fit_transform(clean)
   ```
 
-  `qc_` 里记录每个 run 的头移动距离和旋转角度，`plot()` 画出对齐前后传感器相对头的位置。
+  `qc_` 里记录每个 run 的头移动距离和旋转角度，`plot()` 画出对齐前后传感器相对头的位置。预设中的 `align` 步骤即此修正。
 
 ### 3.2 100 ms 基线上做 z 分数（中）
 
 - **原做法**：`baseline=(None, 0)`，`tmin=-0.1`，采样率 200 Hz，用 `mode="zscore"` 做基线校正（`epoching.py:56`、`:290`）。
 - **问题**：每个 epoch 每个通道只用 20 个样本估计标准差，估计值噪声很大；除以它会把基线方差偶然偏小的试次放大。
-- **修正**：基线只减均值（`mode="mean"`）；如果确实需要标准化，在更长的基线上或跨试次估计尺度。
+- **修正**：基线只减均值（预设中 `Baseline((None, 0), "mean")`）。`Baseline` 会拒绝在过短的基线上逐个 epoch 做 z 分数：*n* 个样本估计标准差的相对标准误约为 1/√(2(*n*−1))，21 个样本为 16%，超过默认上限 10% 时报错。确实需要标准化时，可以用 `Baseline(mode="zscore", scale="pooled")`，它用所有 epoch 合并的基线标准差（逐通道）。
 
 ### 3.3 M1/M2 先参与平均参考，再改为 misc（中）
 
 - **原做法**：先设平均参考（包含 M1/M2），再把 M1/M2 改成 misc 类型并丢弃（`epoching.py:210-211`）。
 - **问题**：最终保留的通道不再是平均参考（各通道之和不为零），而且参考是否包含乳突电极是一个隐含的决定，没有记录。
-- **修正**：先决定是否保留 M1/M2，再做参考。如果要去掉，就先去掉再参考。
+- **修正**：保留原代码去掉 M1/M2 的意图，但先去掉再做平均参考（预设中 `drop_mastoids` 在 `reference` 之前）。测试检查了输出的各通道之和为零。
+- **另外**：原代码分段时又做了一次 0.1–40 Hz 滤波（第三次 0.1 Hz 高通，见 §2.5），预设只加 40 Hz 低通。

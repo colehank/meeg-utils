@@ -22,6 +22,11 @@ Added
 * ``BadChannels(cross_talk="auto", calibration="auto")``: Neuromag
   cross-talk and fine-calibration files are found in BIDS.
 * The ``meu`` command line: ``meu qc`` and ``meu run``.
+* Epoching: ``steps.Epoch``, ``steps.Baseline`` (with a guard against
+  z-scoring on short baselines), ``steps.DropChannels``,
+  ``steps.AutoReject`` (autoreject), and ``meu.epochs.combine`` for runs.
+* ``Pipeline.preset("had-meeg", stage="epochs")``: the corrected HAD-MEEG
+  epoching stage.
 
 [0.2.0]
 -------
