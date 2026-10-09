@@ -148,3 +148,14 @@ def test_plots_and_report(neuromag):
     assert set(one) == {"eeg/filter/psd"}
     html = report.build(pipe, title="by type")
     assert "eeg/filter/psd" in html.html[-1] or any("eeg/filter" in h for h in html.html)
+
+
+def test_annotations_are_carried_back(eeg):
+    raw = eeg.copy()
+    raw._data[:5, 2500:2600] += 1e-3  # a gross artifact
+    step = S.ByChannelType({"eeg": S.BadSegments("amplitude", reject={"eeg": 500e-6})})
+    out = step.fit_transform(raw)
+    assert "BAD_amplitude" in out.annotations.description
+    assert list(raw.annotations.description) == [
+        d for d in out.annotations.description if d != "BAD_amplitude"
+    ]

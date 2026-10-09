@@ -62,6 +62,8 @@ class Step(PlotMixin, BaseEstimator):
     changes_times: ClassVar[bool] = False
     #: Whether the step may drop epochs (e.g. artifact rejection).
     drops_epochs: ClassVar[bool] = False
+    #: Whether the step may add ``BAD_`` annotations (existing ones are kept).
+    adds_annotations: ClassVar[bool] = False
 
     def fit(self, inst: Inst, y: Any = None, *, system: str | None = None) -> Self:
         """Learn the step's state from the data.

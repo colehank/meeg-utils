@@ -31,9 +31,13 @@ Processing steps (``meeg_utils.steps``)
    steps.ByChannelType
    steps.HFC
    steps.Regression
+   steps.BadSegments
+   steps.ASR
+   steps.SNS
    steps.BridgedElectrodes
    steps.DropChannels
    steps.Epoch
+   steps.FixedLengthEpochs
    steps.Baseline
    steps.AutoReject
    epochs.combine

@@ -38,7 +38,8 @@ def check_step(step: Step, inst: Inst) -> None:
     6. Unless the step declares ``changes_channels``, channel names and order
        are unchanged.
     7. Unless the step declares ``changes_times``, the sampling rate, number
-       of samples, ``first_samp``, ``meas_date`` and annotations are unchanged.
+       of samples, ``first_samp``, ``meas_date`` and annotations are unchanged
+       (steps declaring ``adds_annotations`` may only add ``BAD_`` ones).
     8. Every kind in ``plot_kinds`` that is available for this fit draws a
        figure (or a list of figures), and ``plot()`` without data draws
        exactly the available kinds that need none.
@@ -278,7 +279,10 @@ def _assert_same_times(inst: Inst, out: Inst, name: str, step: Step) -> None:
             f"{msg} (first_samp {inst.first_samp} -> {out.first_samp})"
         )
         assert out.n_times == inst.n_times, f"{msg} (n_times)"
-        assert _annotation_tuple(out) == _annotation_tuple(inst), f"{msg} (annotations)"
+        if step.adds_annotations:
+            _assert_annotations_added(inst, out, name)
+        else:
+            assert _annotation_tuple(out) == _annotation_tuple(inst), f"{msg} (annotations)"
     elif isinstance(inst, BaseEpochs | Evoked):
         assert np.array_equal(out.times, inst.times), f"{msg} (times)"
     if isinstance(inst, BaseEpochs):
@@ -289,6 +293,19 @@ def _assert_same_times(inst: Inst, out: Inst, name: str, step: Step) -> None:
             )
         else:
             assert np.array_equal(out.events, inst.events), f"{msg} (events)"
+
+
+def _assert_annotations_added(inst: BaseRaw, out: BaseRaw, name: str) -> None:
+    """Existing annotations are kept unchanged; new ones are BAD_ annotations."""
+    assert out.annotations.orig_time == inst.annotations.orig_time, f"{name}: orig_time changed"
+    before = list(zip(*_annotation_tuple(inst)[1:], strict=True))
+    after = list(zip(*_annotation_tuple(out)[1:], strict=True))
+    remaining = list(after)
+    for annot in before:
+        assert annot in remaining, f"{name}: annotation {annot} was changed or removed"
+        remaining.remove(annot)
+    for annot in remaining:
+        assert annot[2].startswith("BAD_"), f"{name}: added a non-BAD annotation {annot}"
 
 
 def _annotation_tuple(raw: BaseRaw) -> tuple:

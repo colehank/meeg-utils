@@ -218,3 +218,26 @@ class TestAutoReject:
             step = S.AutoReject(method, random_state=0, **kwargs).fit(dirty)
             assert set(step.plot()) == {"reject_log", "thresholds"}
             plt.close("all")
+
+
+class TestFixedLengthEpochs:
+    def test_contract(self, eeg):
+        check_step(S.FixedLengthEpochs(2.0), eeg)
+
+    def test_drops_bad_segments(self, eeg):
+        raw = eeg.copy()
+        offset = raw.first_time if raw.annotations.orig_time is not None else 0.0
+        raw.annotations.append(offset + 10.5, 1.0, "BAD_segment")
+        step = S.FixedLengthEpochs(2.0)
+        epochs = step.fit_transform(raw)
+        assert step.qc_["n_epochs"] == 30
+        assert step.qc_["n_kept"] == 29
+        assert epochs.get_data().shape[-1] == 500
+
+    def test_overlap(self, eeg):
+        epochs = S.FixedLengthEpochs(2.0, overlap=1.0).fit_transform(eeg)
+        assert len(epochs) == 59
+
+    def test_bad_overlap(self, eeg):
+        with pytest.raises(ValueError, match="overlap"):
+            S.FixedLengthEpochs(2.0, overlap=2.0).fit(eeg)

@@ -88,6 +88,19 @@ Available steps
      - Regress reference sensors (KIT/Ricoh, BTi, Artemis123, CTF grade 0)
        or EOG/ECG channels out of the data.
      - ``psd``
+   * - :class:`~meeg_utils.steps.BadSegments`
+     - Annotate bad stretches (``BAD_amplitude``, ``BAD_flat``,
+       ``BAD_muscle``); later steps skip them. Amplitude thresholds are
+       learned (autoreject) or given.
+     - ``segments``
+   * - :class:`~meeg_utils.steps.ASR`
+     - Artifact subspace reconstruction of high-amplitude bursts
+       (mne-denoise; cutoff 20 as EEGLAB).
+     - ``reconstruction``, ``psd``
+   * - :class:`~meeg_utils.steps.SNS`
+     - Sensor noise suppression: removes noise specific to single sensors
+       (mne-denoise).
+     - ``psd``
    * - :class:`~meeg_utils.steps.BridgedElectrodes`
      - Detect and interpolate bridged EEG electrodes.
      - ``topomap``, ``distances``
@@ -98,6 +111,10 @@ Available steps
      - Raw → Epochs around events (annotations or stimulus channel); event
        codes fixed at fit; optional metadata from BIDS ``events.tsv``.
      - ``drop_log``, ``evoked``
+   * - :class:`~meeg_utils.steps.FixedLengthEpochs`
+     - Raw → consecutive epochs of equal length (resting state); drops
+       those overlapping ``BAD`` annotations.
+     - ``drop_log``
    * - :class:`~meeg_utils.steps.Baseline`
      - Baseline correction (mean, ratio, percent, z-score); refuses
        per-epoch z-scores on baselines too short to estimate a standard

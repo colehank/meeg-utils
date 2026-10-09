@@ -24,7 +24,8 @@ Added
 * The ``meu`` command line: ``meu qc`` and ``meu run``.
 * Epoching: ``steps.Epoch``, ``steps.Baseline`` (with a guard against
   z-scoring on short baselines), ``steps.DropChannels``,
-  ``steps.AutoReject`` (autoreject), and ``meu.epochs.combine`` for runs.
+  ``steps.AutoReject`` (autoreject), ``steps.FixedLengthEpochs`` and
+  ``meu.epochs.combine`` for runs.
 * ``Pipeline.preset("had-meeg", stage="epochs")``: the corrected HAD-MEEG
   epoching stage.
 * ``steps.Maxwell``: SSS / tSSS for Neuromag data with cross-talk and
@@ -32,6 +33,10 @@ Added
   signals removed), and a destination head position.
 * ``steps.HFC`` (OPM homogeneous / harmonic field correction) and
   ``steps.Regression`` (reference-sensor or EOG regression).
+* ``steps.BadSegments`` (``BAD_`` annotations by amplitude, flatness or
+  muscle activity), ``steps.ASR`` and ``steps.SNS`` (mne-denoise). Steps
+  may declare ``adds_annotations``; the contract checks that existing
+  annotations are kept.
 * ``steps.ByChannelType``: separate steps per channel type (e.g. MEG and
   EEG), with nested parameters (``by_type__eeg__ica__n_components``).
 * Figures that exist only for some fits (e.g. head movement) are left out

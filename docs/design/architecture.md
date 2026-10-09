@@ -213,9 +213,9 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 | | `Maxwell(st_duration=..., head_pos="chpi", destination=...)`（已实现）：仿真中外部干扰为脑信号 10 倍时，MAG 误差从 1000% 降到 6%（与无干扰时 SSS 本身的重建误差相同）；分段头动（最大 9 mm / 4°）的误差从 17–25% 降到 7–9%；头皮外近传感器的伪迹 SSS 去不掉（误差 > 300%），tSSS 降到 < 60% | mne |
 | | `HeadAlign(destination=...)`（跨 run 头位置对齐） | mne（场映射） |
 | | `HFC`（OPM，已实现）：模拟三轴 OPM 阵列上，30 倍于脑信号的均匀场干扰被完全去除，脑信号误差 6%；只有径向单轴传感器时，均匀场与脑内一阶场几乎无法区分，HFC 会连带去掉大部分脑信号（76%），此时发出警告。`Regression`（已实现，原计划名 RefRegression）：KIT/Ricoh、BTi、Artemis123、CTF（grade 0）的参考通道回归，也可用于 EOG 回归 | mne |
-| | `BadSegments(method=amplitude \| muscle \| asr)` | mne，**mne-denoise**（ASR） |
-| | `ASR`（作为数据修复使用） | **mne-denoise** |
-| | `SNS`（传感器噪声抑制） | **mne-denoise** |
+| | `BadSegments(methods=amplitude \| flat \| muscle)`（已实现）：幅度阈值默认用 autoreject 的全局阈值在 1 s 窗上学习；该阈值也会标出眨眼，ICA 之前应改用宽松阈值。ASR 改为单独的修复步骤 | mne, autoreject |
+| | `ASR`（已实现，作为数据修复使用；cutoff 默认 20，同 EEGLAB clean_rawdata） | **mne-denoise** |
+| | `SNS`（已实现，传感器噪声抑制；默认 10 个邻近通道，同 de Cheveigné & Simon 2008） | **mne-denoise** |
 | | `Reference` | mne |
 | | `ICA(labeler=iclabel \| megnet \| manual, threshold=...)` | mne, mne-icalabel |
 | | `Interpolate` | mne |

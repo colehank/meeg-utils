@@ -238,6 +238,79 @@ class Epoch(Step):
         return mne.viz.plot_compare_evokeds(self.evoked_, combine="gfp", show=False)
 
 
+class FixedLengthEpochs(Step):
+    """Cut a continuous recording into consecutive epochs of equal length (e.g. resting state).
+
+    Wraps :func:`mne.make_fixed_length_epochs`. Epochs overlapping ``BAD``
+    annotations are dropped.
+
+    Parameters
+    ----------
+    duration : float
+        Epoch length in seconds.
+    overlap : float
+        Overlap between consecutive epochs in seconds.
+    reject_by_annotation : bool
+        Drop epochs overlapping ``BAD`` annotations.
+
+    Attributes
+    ----------
+    qc_ : dict
+        ``n_epochs`` (before dropping), ``n_kept``, ``fraction_kept`` and
+        ``duration_kept_s``.
+
+    Notes
+    -----
+    Figures (:meth:`plot`): ``"drop_log"``.
+    """
+
+    accepts: ClassVar[tuple[type, ...]] = (BaseRaw,)
+    returns: ClassVar[type | None] = BaseEpochs
+    changes_times: ClassVar[bool] = True
+    plot_kinds: ClassVar[dict[str, bool]] = {"drop_log": False}
+
+    def __init__(
+        self, duration: float = 2.0, *, overlap: float = 0.0, reject_by_annotation: bool = True
+    ) -> None:
+        self.duration = duration
+        self.overlap = overlap
+        self.reject_by_annotation = reject_by_annotation
+
+    def _fit(self, inst: BaseRaw) -> None:
+        if not 0 <= self.overlap < self.duration:
+            raise ValueError(
+                f"overlap must be at least 0 and below duration ({self.duration}), "
+                f"got {self.overlap}."
+            )
+
+    def _transform(self, inst: BaseRaw) -> BaseEpochs:
+        epochs = mne.make_fixed_length_epochs(
+            inst,
+            duration=self.duration,
+            overlap=self.overlap,
+            reject_by_annotation=self.reject_by_annotation,
+            preload=True,
+            verbose=False,
+        )
+        n_total = len(epochs.drop_log)
+        self.drop_log_ = epochs.drop_log
+        self.qc_.update(
+            n_epochs=n_total,
+            n_kept=len(epochs),
+            fraction_kept=round(len(epochs) / n_total, 4) if n_total else 0.0,
+            duration_kept_s=round(len(epochs) * (self.duration - self.overlap), 3),
+        )
+        return epochs
+
+    def _plot_unavailable(self, kind: str) -> str | None:
+        if not hasattr(self, "drop_log_"):
+            return "the step has not transformed data yet (use fit_transform)"
+        return None
+
+    def _plot_drop_log(self, inst: Any) -> Any:
+        return mne.viz.plot_drop_log(self.drop_log_, show=False)
+
+
 class Baseline(Step):
     """Baseline correction of epochs or evoked data.
 

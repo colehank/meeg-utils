@@ -59,7 +59,8 @@ class ByChannelType(Step):
     -----
     Steps in a branch must keep the channels and the time axis (no
     resampling, epoching or epoch rejection). What the branch changes is
-    carried back: the data, ``info["bads"]`` and the channel descriptions
+    carried back: the data, new annotations (e.g. from :class:`BadSegments`),
+    ``info["bads"]`` and the channel descriptions
     of its channels (e.g. CTF compensation), projectors added or removed,
     the EEG reference flag, and, from a MEG branch, the device-to-head
     transform and the Maxwell-filtering history. ``info["highpass"]`` /
@@ -83,6 +84,7 @@ class ByChannelType(Step):
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw, BaseEpochs)
+    adds_annotations: ClassVar[bool] = True  # branch steps may add BAD_ segments
 
     def __init__(self, branches: dict[str, Any], *, on_missing: str = "raise") -> None:
         self.branches = branches
@@ -210,6 +212,18 @@ class ByChannelType(Step):
                 info["dev_head_t"] = sub.info["dev_head_t"]
                 info["proc_history"] = sub.info["proc_history"]
         info._check_consistency()
+        if isinstance(inst, BaseRaw):  # e.g. BAD_ segments found by the branch
+            existing = set(
+                zip(
+                    inst.annotations.onset,
+                    inst.annotations.duration,
+                    inst.annotations.description,
+                    strict=True,
+                )
+            )
+            for annot in sub.annotations:
+                if (annot["onset"], annot["duration"], annot["description"]) not in existing:
+                    inst.annotations.append(annot["onset"], annot["duration"], annot["description"])
 
     # ------------------------------------------------------------------
     # Parameters

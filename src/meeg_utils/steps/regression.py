@@ -142,7 +142,7 @@ class Regression(Step):
 
 def _centered(data: np.ndarray) -> np.ndarray:
     """Data with the mean over time removed (the regression leaves offsets alone)."""
-    return data - data.mean(axis=-1, keepdims=True)
+    return np.asarray(data - data.mean(axis=-1, keepdims=True))
 
 
 def _variance_removed(inst: Inst, model: Any, picks: np.ndarray) -> float:
