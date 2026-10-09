@@ -276,7 +276,17 @@ check.plot()                         # QC 检查项同样如此
 | `Digitization` 数字化与头-传感器距离 | EEG/MEG | `fit_sphere_to_headshape`、`dev_head_t` | 无位置的 EEG 通道 → warn；球拟合半径超出 50–108.5 mm 或中心 x/y 偏离 > 20 mm（MNE 的合理范围）→ warn；`dev_head_t` 缺失或为单位矩阵 → fail；头-传感器距离只报告 | 三视图数字化点、拟合球、传感器 |
 | `Events` 事件 | 通用 | 标注或刺激通道（`find_events`） | 与 `expected` 计数不符 → fail；同一样本上的多个事件 → warn；间隔小于 `min_interval` → warn | `plot_events` |
 
-**第二批（P2）**：与当天空房间记录比较（`maxwell_filter_prepare_emptyroom` + PSD）、fine calibration（`compute_fine_calibration`）、设备间时钟漂移（`realign_raw`）、3D 配准（`plot_alignment`）、cHPI 信噪比（`compute_chpi_snr` / `plot_chpi_snr`）、SQUID 跳变、光电二极管延迟与抖动、采集参数与 BIDS 描述是否一致。
+**第二批（已实现）**：
+
+| 检查项 | 模态 | 基于 | 判定（默认） | 图 |
+|---|---|---|---|---|
+| `SquidJumps` SQUID 跳变 | MEG（SQUID 系统） | FieldTrip 跳变检测：9 阶中值滤波后求导、按时间 z 分数化 | z > 20（FieldTrip 教程的设置）且信号电平持续改变（区别于尖峰）→ warn | 受影响通道在首次跳变附近的波形 |
+| `ChpiSNR` cHPI 信噪比 | MEG（Neuromag，有 cHPI） | `compute_chpi_snr` | 某线圈的中位 SNR 比各线圈中位数低 10 dB 以上（无公认阈值，本库选择）→ warn | `plot_chpi_snr` |
+| `EmptyRoom` 空房间记录 | MEG（SQUID 系统） | BIDS `find_empty_room` 或传入；Welch PSD | 空房间中的离群传感器（log 噪声的修正 z > 3.5）→ warn；与记录相隔 > 1 天 → warn；噪声底（20–100 Hz，去工频谐波）和记录高出空房间的 dB 只报告 | 记录与空房间的频谱 |
+| `BidsMetadata` BIDS 描述 | 通用（BIDS） | sidecar JSON、`channels.tsv`、数据文件 | 采样率不符 → fail；时长、各类通道数、`channels.tsv` 通道名不符 → warn；缺 `PowerLineFrequency` 等 → warn | — |
+| `Photodiode` 光电二极管（默认不运行，需指定通道） | 通用 | 阈值取 5%/95% 分位的中点，匹配 100 ms 内的首个上升沿 | 未匹配的触发 → warn；抖动只报告，可设 `max_jitter_ms` | 延迟时程与分布 |
+
+未纳入的三项及原因：fine calibration（`compute_fine_calibration`）是站点级的校准流程，需要专门的长时间空房间数据，结果是校准文件而不是对单次记录的判断；设备间时钟漂移（`realign_raw`）需要第二台设备的数据和共同事件，接口随实验而异；3D 配准（`plot_alignment`）需要 MRI 和 trans 文件，并依赖 3D 渲染，`Digitization` 已给出数字化点与头-传感器距离的二维检查。
 
 ```python
 report = meu.qc.inspect(raw)          # 按系统和模态自动选择适用的检查，其余列在 report.skipped
@@ -328,7 +338,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 | **P0 打地基**（已完成） | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；`HeadAlign` 跨 run 头位置对齐；`meu.process` 批处理（`BatchRunner` 的最小版本）；删除旧的 `PreprocessingPipeline` / `BatchPreprocessingPipeline` 和 meegkit；版本 0.2.0 |
 | **P1 质量检查 + 命令行（第一部分）**（已完成） | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`S.BridgedElectrodes`、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找；命令行 `meu qc`、`meu run` |
 | **P1.5 分段**（已完成） | `epochs` 模块：`Events`、`Epoch`、`Baseline`、`AutoReject`；跨 run 合并（通道集合统一、头位置对齐）。HAD-MEEG 分段阶段的修正在这里落地 |
-| **P2 预处理补全**（进行中） | 已完成：`Maxwell`（SSS/tSSS、头动校正）、`HFC`、`Regression`（原名 RefRegression）、`BadSegments`、`ASR`、`SNS`、`FixedLengthEpochs`、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，MEG 按 `system=` 选择，命令行自动识别）。L3 数据集层：`meu.Dataset`（按 BIDS 实体选取、按 session/task 分组）与 `meu.process_dataset`（预处理 → 分段 → 合并，MEG 自动对齐到各 run 的平均头位置，断点续跑，失败汇总）；原计划的 `BatchRunner` 类改为函数，与“只有 fit/transform、不设 run()”的约定一致。未完成：第二批采集 QC |
+| **P2 预处理补全**（已完成） | 已完成：`Maxwell`（SSS/tSSS、头动校正）、`HFC`、`Regression`（原名 RefRegression）、`BadSegments`、`ASR`、`SNS`、`FixedLengthEpochs`、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，MEG 按 `system=` 选择，命令行自动识别）。L3 数据集层：`meu.Dataset`（按 BIDS 实体选取、按 session/task 分组）与 `meu.process_dataset`（预处理 → 分段 → 合并，MEG 自动对齐到各 run 的平均头位置，断点续跑，失败汇总）；原计划的 `BatchRunner` 类改为函数，与“只有 fit/transform、不设 run()”的约定一致。第二批采集 QC（§7.2）。fine calibration、时钟漂移和 3D 配准未纳入，原因见 §7.2 |
 | **P3 命令行补全** | `meu preset` 等其余子命令。分析功能暂缓 |
 | **暂缓** | 分析（ERP/ERF、PSD + specparam、时频、解码、连接性、DSS）、`group` 模块 |
 | **暂缓（可选）** | 源分析：正向模型、逆解、ROI |

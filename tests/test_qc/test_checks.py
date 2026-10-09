@@ -307,7 +307,10 @@ class TestInspect:
     def test_report(self, eeg_bad, tmp_path):
         report = qc.inspect(eeg_bad)
         assert report.level == "warn"
-        assert set(report.skipped) == {"impedance", "muscle", "heart_rate", "head_movement"}
+        assert set(report.skipped) == {
+            "impedance", "muscle", "heart_rate", "head_movement",  # no impedances, 250 Hz, no ECG, EEG
+            "squid_jumps", "chpi_snr", "empty_room", "bids_metadata",  # MEG or BIDS only
+        }  # fmt: skip
         flagged = {(f.check, f.metric) for f in report.flags}
         assert ("amplitude", "n_flat_channels") in flagged
         assert ("outlier_channels", "n_outliers_eeg") in flagged

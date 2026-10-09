@@ -82,6 +82,11 @@ Quality control (``meeg_utils.qc``)
    qc.HeadMovement
    qc.Digitization
    qc.Events
+   qc.SquidJumps
+   qc.ChpiSNR
+   qc.EmptyRoom
+   qc.BidsMetadata
+   qc.Photodiode
    report.build
 
 Presets (``meeg_utils.presets``)

@@ -70,6 +70,16 @@ exists, the docstring says so.
    * - :class:`~meeg_utils.qc.HeadMovement`
      - MEG head movement (cHPI or a ``.pos`` file) and HPI coil fit quality
      - ``positions``, ``displacement``
+   * - :class:`~meeg_utils.qc.SquidJumps`
+     - flux jumps of SQUID sensors (FieldTrip's jump detection)
+     - ``jumps``
+   * - :class:`~meeg_utils.qc.ChpiSNR`
+     - HPI coils much weaker than the others (Neuromag)
+     - ``snr``
+   * - :class:`~meeg_utils.qc.EmptyRoom`
+     - sensor noise floor and noisy sensors in the session's empty-room
+       recording (found in BIDS), empty room from another day
+     - ``psd``
    * - :class:`~meeg_utils.qc.Digitization`
      - missing electrode positions, implausible head shape, unmeasured head
        position, head-to-sensor distance
@@ -77,6 +87,14 @@ exists, the docstring says so.
    * - :class:`~meeg_utils.qc.Events`
      - event counts against what was expected, duplicated triggers
      - ``timeline``
+   * - :class:`~meeg_utils.qc.BidsMetadata`
+     - BIDS sidecar disagreeing with the data or ``channels.tsv``
+       (sampling rate, duration, channel counts), missing line frequency
+     -
+   * - :class:`~meeg_utils.qc.Photodiode` (not run by default)
+     - delay and jitter between triggers and the photodiode, stimuli not
+       shown: ``meu.qc.Photodiode("PD").compute(raw)``
+     - ``delays``
 
 Bridged electrodes can also be repaired during preprocessing with
 :class:`meeg_utils.steps.BridgedElectrodes`.

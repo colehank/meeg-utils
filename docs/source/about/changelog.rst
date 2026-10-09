@@ -17,6 +17,8 @@ Added
   movement, digitization, events) with documented thresholds and figures;
   ``inspect`` for one recording, ``inspect_dataset`` for a dataset with
   outlying recordings flagged.
+* Second batch of checks: ``SquidJumps``, ``ChpiSNR``, ``EmptyRoom``
+  (found in BIDS), ``BidsMetadata`` and ``Photodiode``.
 * ``meu.report.build``: HTML reports of QC results and fitted pipelines.
 * ``steps.BridgedElectrodes``: repair of bridged EEG electrodes.
 * ``BadChannels(cross_talk="auto", calibration="auto")``: Neuromag
