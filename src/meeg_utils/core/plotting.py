@@ -12,6 +12,8 @@ class PlotMixin:
 
     Subclasses set ``plot_kinds`` (kind -> whether the figure needs data) and
     ``_fitted_attr``, the attribute that exists once the object is fitted.
+    Figures that only exist for some fits (e.g. head movement, when it was
+    estimated) are excluded with :meth:`_plot_unavailable`.
     """
 
     #: Figures the object can draw once fitted: kind -> whether it needs data
@@ -51,7 +53,9 @@ class PlotMixin:
             if kwargs:
                 raise TypeError("Plot options can only be passed together with kind.")
             kinds = [
-                k for k, needs_data in self.plot_kinds.items() if inst is not None or not needs_data
+                k
+                for k, needs_data in self.plot_kinds.items()
+                if (inst is not None or not needs_data) and self._plot_unavailable(k) is None
             ]
         else:
             if kind not in self.plot_kinds:
@@ -59,6 +63,9 @@ class PlotMixin:
                 raise ValueError(f"{name} has no {kind!r} plot; available: {available}.")
             if self.plot_kinds[kind] and inst is None:
                 raise ValueError(f"The {kind!r} plot of {name} needs inst=<data>.")
+            reason = self._plot_unavailable(kind)
+            if reason is not None:
+                raise ValueError(f"No {kind!r} plot for this {name}: {reason}.")
             kinds = [kind]
 
         import matplotlib.pyplot as plt
@@ -68,3 +75,7 @@ class PlotMixin:
             for k in kinds:
                 figures[k] = getattr(self, f"_plot_{k}")(inst, **kwargs)
         return figures
+
+    def _plot_unavailable(self, kind: str) -> str | None:
+        """Return why ``kind`` cannot be drawn for this fit, or ``None`` if it can."""
+        return None

@@ -8,7 +8,7 @@ Every :class:`~meeg_utils.core.Step` shipped with meeg-utils must pass
 from __future__ import annotations
 
 import json
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from mne import Evoked
@@ -39,8 +39,9 @@ def check_step(step: Step, inst: Inst) -> None:
        are unchanged.
     7. Unless the step declares ``changes_times``, the sampling rate, number
        of samples, ``first_samp``, ``meas_date`` and annotations are unchanged.
-    8. Every kind in ``plot_kinds`` draws a figure (or a list of figures),
-       and ``plot()`` without data draws exactly the kinds that need none.
+    8. Every kind in ``plot_kinds`` that is available for this fit draws a
+       figure (or a list of figures), and ``plot()`` without data draws
+       exactly the available kinds that need none.
 
     Parameters
     ----------
@@ -187,14 +188,15 @@ def _check_plots(step: Step, inst: Inst, name: str) -> None:
     from matplotlib.figure import Figure
 
     try:
+        available = {k for k in step.plot_kinds if step._plot_unavailable(k) is None}
         without_data = step.plot()
-        expected = {k for k, needs_data in step.plot_kinds.items() if not needs_data}
+        expected = {k for k in available if not step.plot_kinds[k]}
         assert set(without_data) == expected, (
             f"{name}: plot() drew {sorted(without_data)}, expected {sorted(expected)}"
         )
         with_data = step.plot(inst=inst)
-        assert set(with_data) == set(step.plot_kinds), (
-            f"{name}: plot(inst=...) drew {sorted(with_data)}, expected {sorted(step.plot_kinds)}"
+        assert set(with_data) == available, (
+            f"{name}: plot(inst=...) drew {sorted(with_data)}, expected {sorted(available)}"
         )
         for kind, drawn in with_data.items():
             figs = drawn if isinstance(drawn, list) else [drawn]
@@ -211,21 +213,37 @@ def _check_plots(step: Step, inst: Inst, name: str) -> None:
 def _assert_params_equal(actual: dict, expected: dict, msg: str, *, loose: bool = False) -> None:
     assert actual.keys() == expected.keys(), f"{msg}: parameter names differ"
     for key, expected_value in expected.items():
-        other = actual[key]
-        value = expected_value
-        if loose and isinstance(value, tuple):  # tuples come back as lists
-            value = list(value)
-        if isinstance(value, Step):
-            assert type(other) is type(value), f"{msg}: parameter {key!r} differs"
-            continue
-        if isinstance(value, np.ndarray) or isinstance(other, np.ndarray):
-            assert np.array_equal(np.asarray(other), np.asarray(value)), (
-                f"{msg}: parameter {key!r} differs"
-            )
-            continue
-        assert other == value or (other is value), (
-            f"{msg}: parameter {key!r} differs ({other!r} != {value!r})"
+        assert _values_equal(actual[key], expected_value, loose=loose), (
+            f"{msg}: parameter {key!r} differs ({actual[key]!r} != {expected_value!r})"
         )
+
+
+def _values_equal(other: Any, value: Any, *, loose: bool) -> bool:
+    """Parameter equality; steps compare by class and parameters, containers recursively."""
+    if loose and isinstance(value, tuple):  # tuples come back as lists
+        value = list(value)
+    if isinstance(value, Step):
+        return type(other) is type(value) and all(
+            _values_equal(other.get_params(deep=False)[k], v, loose=loose)
+            for k, v in value.get_params(deep=False).items()
+        )
+    if isinstance(value, np.ndarray) or isinstance(other, np.ndarray):
+        return bool(np.array_equal(np.asarray(other), np.asarray(value)))
+    if isinstance(value, dict):
+        return (
+            isinstance(other, dict)
+            and other.keys() == value.keys()
+            and all(_values_equal(other[k], v, loose=loose) for k, v in value.items())
+        )
+    if isinstance(value, list | tuple) and any(
+        isinstance(v, Step | list | tuple | dict) for v in value
+    ):
+        return (
+            isinstance(other, list | tuple)
+            and len(other) == len(value)
+            and all(_values_equal(o, v, loose=loose) for o, v in zip(other, value, strict=True))
+        )
+    return bool(other == value or other is value)
 
 
 def _snapshot(inst: Inst) -> dict:

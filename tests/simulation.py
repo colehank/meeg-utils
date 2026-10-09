@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from typing import Any
+
 import mne
 import numpy as np
 from mne.io import BaseRaw
@@ -22,6 +24,8 @@ NEUROMAG_URL = (
     "https://raw.githubusercontent.com/mne-tools/mne-python/v1.13.2/mne/io/tests/data/test_raw.fif"
 )
 NEUROMAG_SHA256 = "b1dbe0150bd036cc2446f352265cdaf7deb7fa8eafb16eec6c64e403f4176e52"
+#: cHPI coil frequencies of make_chpi (below the recording's 172 Hz low-pass).
+CHPI_FREQS = (83.0, 103.0, 123.0, 143.0)
 
 
 def make_eeg(
@@ -131,3 +135,32 @@ def make_erp(*, n_trials: int = 60, seed: int = 0, erp: bool = True) -> BaseRaw:
         )
     )
     return raw
+
+
+def make_chpi(fname) -> tuple[BaseRaw, Any, np.ndarray]:
+    """Neuromag data with simulated cHPI and a known head movement.
+
+    The head moves 8 mm along the device-to-head x translation over 8 s.
+    Returns the recording (MEG and stim channels), a function giving the
+    true displacement (m) at given times, and the head positions.
+    """
+    raw = mne.io.read_raw_fif(fname, verbose=False).crop(0, 8).load_data(verbose=False)
+    raw.pick(["meg", "stim"])
+    with raw.info._unlock():
+        for coil, freq in zip(raw.info["hpi_meas"][0]["hpi_coils"], CHPI_FREQS, strict=True):
+            coil["coil_freq"] = freq
+    t0 = raw.first_samp / raw.info["sfreq"]
+    times = t0 + np.arange(0, 8.01, 0.5)
+    dev_head = raw.info["dev_head_t"]["trans"]
+    pos = np.zeros((len(times), 10))
+    pos[:, 0] = times
+    pos[:, 1:4] = mne.transforms.rot_to_quat(dev_head[:3, :3])
+    pos[:, 4:7] = dev_head[:3, 3]
+    pos[:, 4] += np.linspace(0, 0.008, len(times))
+    pos[:, 7] = 1
+    mne.simulation.add_chpi(raw, head_pos=pos, verbose=False)
+
+    def truth(t: np.ndarray) -> np.ndarray:
+        return np.interp(t, times, np.linspace(0, 0.008, len(times)))
+
+    return raw, truth, pos

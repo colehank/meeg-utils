@@ -10,6 +10,7 @@ from .filtering import Filter, Resample
 from .head import HeadAlign
 from .ica import ICA
 from .line_noise import LineNoise
+from .maxwell import Maxwell
 
 __all__ = [
     "ICA",
@@ -23,6 +24,7 @@ __all__ = [
     "HeadAlign",
     "Interpolate",
     "LineNoise",
+    "Maxwell",
     "Reference",
     "Resample",
 ]

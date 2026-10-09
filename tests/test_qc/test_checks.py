@@ -12,9 +12,7 @@ from mne.io import BaseRaw
 from meeg_utils import qc
 from meeg_utils.testing import check_check
 
-from ..simulation import EEG_CHANNELS, FLAT, NOISY, SFREQ, make_eeg
-
-CHPI_FREQS = (83.0, 103.0, 123.0, 143.0)
+from ..simulation import EEG_CHANNELS, FLAT, NOISY, SFREQ, make_chpi, make_eeg
 
 
 def _levels(check: qc.Check) -> dict[str, str]:
@@ -29,32 +27,8 @@ def _bridge(raw: BaseRaw, a: str, b: str, noise: float = 0.3e-6, seed: int = 1) 
 
 @pytest.fixture(scope="module")
 def chpi_raw(neuromag_fname):
-    """Neuromag data with simulated cHPI and a known head movement.
-
-    The head moves 8 mm along the device-to-head x translation over 8 s.
-    Returns the recording and a function giving the true displacement (m)
-    at given times.
-    """
-    raw = mne.io.read_raw_fif(neuromag_fname, verbose=False).crop(0, 8).load_data(verbose=False)
-    raw.pick(["meg", "stim"])
-    with raw.info._unlock():
-        for coil, freq in zip(raw.info["hpi_meas"][0]["hpi_coils"], CHPI_FREQS, strict=True):
-            coil["coil_freq"] = freq
-    t0 = raw.first_samp / raw.info["sfreq"]
-    times = t0 + np.arange(0, 8.01, 0.5)
-    dev_head = raw.info["dev_head_t"]["trans"]
-    pos = np.zeros((len(times), 10))
-    pos[:, 0] = times
-    pos[:, 1:4] = mne.transforms.rot_to_quat(dev_head[:3, :3])
-    pos[:, 4:7] = dev_head[:3, 3]
-    pos[:, 4] += np.linspace(0, 0.008, len(times))
-    pos[:, 7] = 1
-    mne.simulation.add_chpi(raw, head_pos=pos, verbose=False)
-
-    def truth(t: np.ndarray) -> np.ndarray:
-        return np.interp(t, times, np.linspace(0, 0.008, len(times)))
-
-    return raw, truth, pos
+    """Neuromag data with simulated cHPI and a known head movement (see make_chpi)."""
+    return make_chpi(neuromag_fname)
 
 
 class TestContracts:
