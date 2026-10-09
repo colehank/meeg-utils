@@ -8,7 +8,8 @@
 
 - **封装，不重写。** 算法交给 MNE、mne-bids、mne-denoise、pyprep、mne-icalabel、autoreject、specparam、mne-connectivity 等成熟库；本库负责编排、默认值、质量检查和处理记录。
 - **数据对象用 MNE 原生类型。** `Raw` / `Epochs` / `Evoked` 不再包一层，用户随时可以退回原生 MNE。
-- **Python API 优先。** notebook 里交互调参，同一套配置再批量跑完整个数据集。YAML 只作为导出和复现格式。
+- **Python API 优先。** notebook 里交互调参，同一套配置再批量跑完整个数据集。YAML 只作为导出和复现格式；另提供命令行 `meu`，用来运行 YAML 配置和数据集级任务。
+- **命名约定。** 统一用缩写 `meu`：`import meeg_utils as meu`，命令行为 `meu`，文档示例一律写 `meu.xxx`。
 - **BIDS 优先，兼容任意文件。** 文件命名、衍生数据、元信息（工频、通道类型等）优先从 BIDS 读取；非 BIDS 文件也能处理，元信息由用户提供。
 - **支持 MNE 能读的所有系统。** 各系统特有的处理由系统识别和分系统预设负责（见 §5）。
 - **与 MNE-BIDS-Pipeline 的区别：** 后者以配置文件驱动、整体较重；本库以 API 为主，可以组合、交互使用。
@@ -112,7 +113,8 @@ qc.report(pipe, inst) -> mne.Report
 ### 4.4 使用示例
 
 ```python
-from meeg_utils import Pipeline, io, qc, steps as S
+import meeg_utils as meu
+from meeg_utils import Pipeline, steps as S
 
 pipe = Pipeline([
     ("filter", S.Filter(l_freq=0.1, h_freq=100)),
@@ -123,7 +125,7 @@ pipe = Pipeline([
                      labeler="iclabel", threshold=0.8)),
 ])
 
-raw = io.read(bids_path)
+raw = meu.io.read(bids_path)
 pipe.set_params(ica__threshold=0.9)
 
 tmp   = pipe[:3].fit_transform(raw)          # 只跑前三步调试
@@ -131,17 +133,35 @@ clean = pipe.fit_transform(raw)
 
 pipe.named_steps["ica"].ica_                 # 可检查、可保存
 pipe.qc_["line"], pipe.provenance_
-qc.report(pipe, clean).save("sub-01_report.html")
-io.save_derivative(clean, bids_path, deriv_root, pipeline=pipe)
+meu.qc.report(pipe, clean).save("sub-01_report.html")
+meu.io.save_derivative(clean, bids_path, deriv_root, pipeline=pipe)
 pipe.to_yaml("config.yaml")
-
-# 在 run-1 上拟合，应用到同一 session 的 run-2（复用坏道和 ICA）
-pipe.fit(raw_run1)
-clean2 = pipe.transform(raw_run2)
 
 # 预设 + 局部修改
 pipe = Pipeline.preset("eeg-erp").set_params(filter__h_freq=40)
+
+# 复现已发表的流程
+pipe = Pipeline.preset("had-meeg", datatype="meg")
 ```
+
+命令行：
+
+```bash
+meu qc     /data/bids                      # 数据集 QC 汇总
+meu run    config.yaml /data/bids -j 8     # 按配置批量处理
+meu preset had-meeg --datatype meg > config.yaml
+```
+
+## 4.5 多 run 的处理策略
+
+**默认以单个 run 为处理单位**：坏道、工频、ICA 都在每个 run 上独立拟合。原因是 run 之间的头位置、噪声环境、电极阻抗变化都较大，跨 run 共享这些状态反而有害。
+
+但 run 之间有两件事必须统一，放在分段（`epochs`）和组水平之前，由专门的 Step 负责，不混进单 run 流程：
+
+1. **通道集合一致。** 合并各 run 的 epochs 前，坏道取各 run 的并集，或者全部插值后对齐通道顺序。
+2. **MEG 头位置对齐。** 把所有 run 变换到同一个目标头位置：Neuromag 用 `maxwell_filter(destination=...)`，CTF/KIT 用基于场映射的变换（需要单独验证正确性，见 HAD-MEEG 审查）。
+
+`fit(run1)` 之后 `transform(run2)` 在技术上仍然可用（例如 run 很短、ICA 数据量不足时），但不进入任何预设。
 
 ## 5. 采集系统识别
 
@@ -160,6 +180,17 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 - 声明了 `systems` 的 Step，用在不适用的系统上**直接报错**；`method="auto"` 的 Step 按系统选择后端。
 - MEG 和 EEG 混合采集时，用 `ByChannelType` 分支处理，所有通道都保留。
 - **数据类型由 BIDS 的 `datatype` 或用户参数决定**，不再根据"有没有 EEG 通道"来推断。
+
+## 5.5 预设
+
+预设分两类：
+
+| 类型 | 目的 | 规则 |
+|---|---|---|
+| **复现型**（如 `had-meeg`、`nod-meeg`） | 逐步复现已发表数据集的预处理 | 参数和步骤严格按原代码；已知问题写进文档并在运行时警告，**不悄悄修正**；用原版本号标注 |
+| **推荐型**（如 `eeg-erp`、`meg-erp`、`eeg-rest`、`meg-rest`） | 本库推荐的默认流程 | 每个参数都要能追溯到文献或权威流程的默认值，在文档中逐条注明出处 |
+
+推荐型预设的参考来源（逐条核对后再采用）：MNE-BIDS-Pipeline 的默认配置、Jas et al. 2018（*Frontiers in Neuroscience*，MNE 组分析可复现示例）、FLUX（Ferrante et al. 2022，MEG 流程）、PREP（Bigdely-Shamlo et al. 2015）、ICLabel（Pion-Tonachini et al. 2019）的输入要求、ZapLine-plus（Klug & Kloosterman 2022）。
 
 ## 6. 模块与后端
 
@@ -181,6 +212,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 | `epochs` | `Events`、`Epoch`、`Baseline`、`AutoReject` | mne, autoreject |
 | `analysis` | ERP/ERF、PSD + 非周期成分（specparam）、时频、连接性、解码 | mne, specparam, mne-connectivity, mne.decoding |
 | | `DSS`（ERP/SSVEP 增强等分析用途） | **mne-denoise** |
+| `group` | 总平均、组水平统计（基于聚类的置换检验、TFCE）、组水平解码和 RSA 统计 | mne.stats, scipy |
 | （后期）`source` | 正向模型、逆解、ROI | mne |
 | （专用，可选） | iCanClean（移动 EEG）、SOUND、SSP-SIR（TMS-EEG） | **mne-denoise** |
 
@@ -235,15 +267,16 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 
 | 阶段 | 内容 |
 |---|---|
-| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；日志与错误处理；契约测试；版本 0.2.0 |
+| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 复现型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
 | **P1 质量检查** | `qc` 模块、mne.Report、数据集 QC 汇总表 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、`epochs` 模块、L3 `Dataset` / `BatchRunner` |
-| **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS |
+| **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS；`group` 模块；`meu` 命令行 |
 | **P4 源分析** | 正向模型、逆解、ROI（可选） |
 
 ## 12. 待定问题
 
-- [ ] 预设的具体参数（各预设分别包含哪些步骤、默认值是多少），需要对照文献逐条确定。
-- [ ] 多 run 场景：ICA 和坏道检测按 run 做，还是按 session 合并后做（是否提供 `fit` 用 concat、`transform` 逐 run 的模式）。
-- [ ] `Dataset` 层是否支持组水平分析（如总平均、组统计），还是只负责逐被试处理。
-- [ ] 是否提供命令行入口（`meeg-utils run config.yaml`）作为 YAML 的补充。
+- [ ] 推荐型预设的具体参数：逐条对照 §5.5 所列来源确定并注明出处。
+- [x] 多 run：默认按单个 run 处理，跨 run 只统一通道集合和 MEG 头位置（§4.5）。
+- [x] 组水平：支持，新增 `group` 模块。
+- [x] 命令行：`meu`；缩写风格统一为 `meu`。
+- [ ] 复现型预设 `had-meeg`：审查中发现的问题，是在新版本中修正（并发布更正说明），还是保持原样只做警告。
