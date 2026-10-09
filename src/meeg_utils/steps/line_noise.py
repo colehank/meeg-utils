@@ -9,6 +9,7 @@ from mne.io import BaseRaw
 from scipy.signal import welch  # type: ignore[import-untyped]
 
 from ..core import Step
+from ._plotting import plot_psd_comparison
 from ._utils import picks_by_type
 
 METHODS = ("zapline-plus", "zapline", "notch")
@@ -60,11 +61,22 @@ class LineNoise(Step):
         Per channel type: ``suppression_db`` (power reduction at ``fline``),
         ``distortion_db`` (mean absolute log-power change 1-45 Hz outside the
         line harmonics), ``distortion_db_broadband`` (same up to 90% of
-        Nyquist), ``variance_removed_pct``, ``n_flat_skipped`` (flat channels
+        Nyquist), ``variance_removed_pct``, ``overclean_fraction`` and
+        ``underclean_fraction`` (fractions of channels with the noise floor
+        around ``fline`` lowered by more than 3 dB, or with a residual peak
+        above twice the surrounding power), ``n_flat_skipped`` (flat channels
         left out of these metrics) and, for ZapLine, ``n_removed``.
+    psd_ : dict
+        Per channel type, PSDs before and after the last transform.
+
+    Notes
+    -----
+    Figures (:meth:`plot`): ``"psd"``, spectra before and after cleaning
+    with the line frequency and its harmonics marked.
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw,)
+    plot_kinds: ClassVar[dict[str, bool]] = {"psd": False}
 
     def __init__(
         self,
@@ -114,11 +126,14 @@ class LineNoise(Step):
             before = {t: inst.get_data(picks=p) for t, p in self.picks_.items()}
             picks = [p for ps in self.picks_.values() for p in ps]
             inst.notch_filter(self._harmonics(inst.info["sfreq"]), picks=picks, verbose=False)
+            self.psd_ = {}
             for ch_type, ch_picks in self.picks_.items():
-                self.qc_[ch_type] = _qc(
+                self.qc_[ch_type], self.psd_[ch_type] = _qc(
                     before[ch_type], inst.get_data(picks=ch_picks), inst.info["sfreq"], self
                 )
             return inst
+
+        self.psd_ = {}
 
         for ch_type, picks in self.picks_.items():
             data = inst.get_data(picks=picks)
@@ -129,9 +144,19 @@ class LineNoise(Step):
                 model = self._make_zapline(inst.info["sfreq"], adaptive=True)
                 cleaned = model.fit_transform(data)
             inst._data[picks] = cleaned
-            self.qc_[ch_type] = _qc(data, cleaned, inst.info["sfreq"], self)
+            self.qc_[ch_type], self.psd_[ch_type] = _qc(data, cleaned, inst.info["sfreq"], self)
             self.qc_[ch_type]["n_removed"] = _to_int(model.n_removed_)
         return inst
+
+    def _plot_psd(self, inst: BaseRaw | None) -> Any:
+        if not hasattr(self, "psd_"):
+            raise ValueError("The 'psd' plot needs the step to have transformed data.")
+        sfreq = 2 * float(next(iter(self.psd_.values()))["freqs"][-1])
+        return plot_psd_comparison(
+            self.psd_,
+            title=f"Line noise ({self.method}, {self.fline_:g} Hz)",
+            marks=self._harmonics(sfreq),
+        )
 
     # ------------------------------------------------------------------
 
@@ -155,7 +180,9 @@ class LineNoise(Step):
         return self.fline_ * np.arange(1, n + 1)
 
 
-def _qc(before: np.ndarray, after: np.ndarray, sfreq: float, step: LineNoise) -> dict[str, Any]:
+def _qc(
+    before: np.ndarray, after: np.ndarray, sfreq: float, step: LineNoise
+) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
     from mne_denoise import qa
 
     # Flat channels have no spectrum to compare; leave them out of the metrics.
@@ -166,7 +193,12 @@ def _qc(before: np.ndarray, after: np.ndarray, sfreq: float, step: LineNoise) ->
     _, psd_after = welch(after, fs=sfreq, nperseg=nperseg)
     n_harm = len(step._harmonics(sfreq)) - 1
     fmax = min(45.0, 0.9 * sfreq / 2)
-    return {
+    spectrum = {
+        "freqs": freqs,
+        "before": psd_before.astype(np.float32),
+        "after": psd_after.astype(np.float32),
+    }
+    metrics = {
         "fline": step.fline_,
         "suppression_db": float(qa.suppression_ratio(freqs, psd_before, psd_after, step.fline_)),
         "distortion_db": float(
@@ -189,8 +221,15 @@ def _qc(before: np.ndarray, after: np.ndarray, sfreq: float, step: LineNoise) ->
             )
         ),
         "variance_removed_pct": float(qa.variance_removed(before, after)),
+        # Fraction of channels where the floor around fline drops >3 dB (over-cleaning),
+        # and where a peak >2x the surrounding power remains (under-cleaning).
+        "overclean_fraction": float(
+            qa.overclean_proportion(freqs, psd_before, psd_after, step.fline_)
+        ),
+        "underclean_fraction": float(qa.underclean_proportion(freqs, psd_after, step.fline_)),
         "n_flat_skipped": int((~live).sum()),
     }
+    return metrics, spectrum
 
 
 def _to_int(value: Any) -> int | list[int] | None:

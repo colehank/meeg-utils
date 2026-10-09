@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Generator
 from pathlib import Path
 
+import matplotlib
+
+matplotlib.use("Agg")  # headless: figures are created, never shown
+
 import mne
 import pytest
 from mne.io import BaseRaw

@@ -32,6 +32,8 @@ def check_step(step: Step, inst: Inst) -> None:
        are unchanged.
     7. Unless the step declares ``changes_times``, the sampling rate, number
        of samples, ``first_samp``, ``meas_date`` and annotations are unchanged.
+    8. Every kind in ``plot_kinds`` draws a figure (or a list of figures),
+       and ``plot()`` without data draws exactly the kinds that need none.
 
     Parameters
     ----------
@@ -94,6 +96,32 @@ def check_step(step: Step, inst: Inst) -> None:
 
     if not step.changes_times and step.returns is None:
         _assert_same_times(inst, out, name)
+
+    # 8. Figures
+    _check_plots(step, inst, name)
+
+
+def _check_plots(step: Step, inst: Inst, name: str) -> None:
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
+    try:
+        without_data = step.plot()
+        expected = {k for k, needs_data in step.plot_kinds.items() if not needs_data}
+        assert set(without_data) == expected, (
+            f"{name}: plot() drew {sorted(without_data)}, expected {sorted(expected)}"
+        )
+        with_data = step.plot(inst=inst)
+        assert set(with_data) == set(step.plot_kinds), (
+            f"{name}: plot(inst=...) drew {sorted(with_data)}, expected {sorted(step.plot_kinds)}"
+        )
+        for kind, drawn in with_data.items():
+            figs = drawn if isinstance(drawn, list) else [drawn]
+            assert figs and all(isinstance(f, Figure) for f in figs), (
+                f"{name}: plot {kind!r} did not return matplotlib figures"
+            )
+    finally:
+        plt.close("all")
 
 
 # ----------------------------------------------------------------------

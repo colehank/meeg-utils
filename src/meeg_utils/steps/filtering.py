@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from mne import Evoked
 from mne.epochs import BaseEpochs
@@ -10,6 +10,8 @@ from mne.io import BaseRaw
 
 from ..core import Step
 from ..core.step import Inst
+from ._plotting import plot_psd_comparison, psd_summary
+from ._utils import picks_by_type
 
 
 class Filter(Step):
@@ -47,9 +49,18 @@ class Filter(Step):
     ----------
     qc_ : dict
         ``highpass`` and ``lowpass`` of the filtered data (from ``info``).
+    psd_ : dict
+        Per channel type, PSDs before and after the last transform.
+
+    Notes
+    -----
+    Figures (:meth:`plot`): ``"response"`` (filter frequency and impulse
+    response, :func:`mne.viz.plot_filter`) and ``"psd"`` (spectra before and
+    after filtering).
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw, BaseEpochs, Evoked)
+    plot_kinds: ClassVar[dict[str, bool]] = {"response": False, "psd": False}
 
     def __init__(
         self,
@@ -90,8 +101,13 @@ class Filter(Step):
             )
         if self.l_freq is not None and self.h_freq is not None and self.l_freq >= self.h_freq:
             raise ValueError(f"l_freq ({self.l_freq} Hz) must be below h_freq ({self.h_freq} Hz).")
+        self.sfreq_ = float(inst.info["sfreq"])
 
     def _transform(self, inst: Inst) -> Inst:
+        picks = picks_by_type(inst.info, exclude_bads=False)
+        before = {
+            t: psd_summary(inst.get_data(picks=p), inst.info["sfreq"]) for t, p in picks.items()
+        }
         inst.filter(
             l_freq=self.l_freq,
             h_freq=self.h_freq,
@@ -108,7 +124,47 @@ class Filter(Step):
             verbose=False,
         )
         self.qc_.update(highpass=inst.info["highpass"], lowpass=inst.info["lowpass"])
+        self.psd_ = {
+            t: {
+                "freqs": before[t][0],
+                "before": before[t][1],
+                "after": psd_summary(inst.get_data(picks=p), inst.info["sfreq"])[1],
+            }
+            for t, p in picks.items()
+        }
         return inst
+
+    def _plot_response(self, inst: Inst | None) -> Any:
+        import mne
+
+        h = mne.filter.create_filter(
+            None,
+            self.sfreq_,
+            self.l_freq,
+            self.h_freq,
+            filter_length=self.filter_length,
+            l_trans_bandwidth=self.l_trans_bandwidth,
+            h_trans_bandwidth=self.h_trans_bandwidth,
+            method=self.method,
+            iir_params=self.iir_params,
+            phase=self.phase,
+            fir_window=self.fir_window,
+            fir_design=self.fir_design,
+            verbose=False,
+        )
+        band = f"{self.l_freq or 0}-{self.h_freq or self.sfreq_ / 2:g} Hz"
+        return mne.viz.plot_filter(
+            h, self.sfreq_, title=f"Filter response ({band})", show=False, compensate=True
+        )
+
+    def _plot_psd(self, inst: Inst | None) -> Any:
+        if not hasattr(self, "psd_"):
+            raise ValueError("The 'psd' plot needs the step to have transformed data.")
+        return plot_psd_comparison(
+            self.psd_,
+            title=f"Filter {self.l_freq}-{self.h_freq} Hz",
+            marks=[f for f in (self.l_freq, self.h_freq) if f is not None],
+        )
 
 
 class Resample(Step):

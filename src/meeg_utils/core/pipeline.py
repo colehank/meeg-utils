@@ -182,6 +182,37 @@ class Pipeline(BaseEstimator):
                 )
             current = step.returns or current
 
+    def plot(self, *, inst: Source | None = None) -> dict[str, dict[str, Any]]:
+        """Draw the quality-control figures of every fitted step.
+
+        Parameters
+        ----------
+        inst : Raw | Epochs | Evoked | str | Path | BIDSPath | None
+            Data for the figures that need it. It is run through the fitted
+            steps (``transform``, no refitting), so each step plots the data
+            as that step received it. Without it, only figures that need no
+            data are drawn.
+
+        Returns
+        -------
+        dict
+            Step name mapped to that step's ``{kind: Figure}``; steps without
+            figures are left out.
+        """
+        check_is_fitted(self, "system_")
+        data = None
+        if inst is not None:
+            data, owned = _load(inst)
+            data = data if owned else data.copy()
+        figures = {}
+        for i, (name, step) in enumerate(self.steps):
+            step_figures = step.plot(inst=data)
+            if step_figures:
+                figures[name] = step_figures
+            if data is not None and i < len(self.steps) - 1:
+                data = step.transform(data, copy=False)
+        return figures
+
     # ------------------------------------------------------------------
     # Parameters (nested, scikit-learn style)
 

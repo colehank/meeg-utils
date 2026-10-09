@@ -77,9 +77,29 @@ class ICA(Step):
     qc_ : dict
         ``rank``, ``n_components``, ``excluded``, ``label_counts`` and
         ``excluded_variance`` (fraction of the fitted data's variance).
+
+    Notes
+    -----
+    Figures (:meth:`plot`):
+
+    - ``"components"``: component topographies titled with label and
+      probability, excluded components in red.
+    - ``"labels"``: predicted probability of each component's label, with
+      the exclusion threshold.
+    - ``"properties"`` (needs ``inst``): :meth:`mne.preprocessing.ICA.plot_properties`
+      of the excluded components (the first five if none are excluded);
+      a list of figures.
+    - ``"overlay"`` (needs ``inst``): signals before and after removing the
+      excluded components (:meth:`mne.preprocessing.ICA.plot_overlay`).
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw,)
+    plot_kinds: ClassVar[dict[str, bool]] = {
+        "components": False,
+        "labels": False,
+        "properties": True,
+        "overlay": True,
+    }
 
     def __init__(
         self,
@@ -196,6 +216,72 @@ class ICA(Step):
         self.qc_.setdefault("manual_labels", {}).update({str(k): v for k, v in labels.items()})
         self._update_exclude(inst.copy().pick(self.modality_, exclude="bads") if inst else None)
         return self
+
+    # ------------------------------------------------------------------
+    # Figures
+
+    def _plot_components(self, inst: BaseRaw | None, **kwargs: Any) -> Any:
+        figs = self.ica_.plot_components(show=False, **kwargs)
+        for fig in figs if isinstance(figs, list) else [figs]:
+            for ax in fig.axes:
+                title = ax.get_title()
+                if not title.startswith("ICA"):
+                    continue
+                idx = int(title.removeprefix("ICA"))
+                proba = self.proba_[idx]
+                suffix = "" if np.isnan(proba) else f" {proba:.2f}"
+                ax.set_title(
+                    f"{title}\n{self.labels_[idx]}{suffix}",
+                    color="C3" if idx in self.exclude_ else "k",
+                    fontsize=8,
+                )
+        return figs
+
+    def _plot_labels(self, inst: BaseRaw | None) -> Any:
+        import matplotlib.pyplot as plt
+
+        n = len(self.labels_)
+        fig, ax = plt.subplots(figsize=(max(6, 0.35 * n), 3.2), layout="constrained")
+        names = sorted(set(self.labels_))
+        cmap = plt.get_cmap("tab10")
+        colors = [cmap(names.index(label) % 10) for label in self.labels_]
+        ax.bar(np.arange(n), np.nan_to_num(self.proba_), color=colors)
+        for idx in self.exclude_:
+            ax.annotate(
+                "x", (idx, np.nan_to_num(self.proba_[idx])), ha="center", va="bottom", color="C3"
+            )
+        ax.axhline(self.threshold, color="C3", ls="--", lw=1)
+        ax.set(xlabel="Component", ylabel="Label probability", ylim=(0, 1.08), xlim=(-1, n))
+        ax.set_xticks(np.arange(n))
+        handles = [plt.Rectangle((0, 0), 1, 1, color=cmap(i % 10)) for i in range(len(names))]
+        ax.legend(
+            handles,
+            names,
+            ncols=min(4, len(names)),
+            fontsize="small",
+            frameon=False,
+            loc="upper center",
+            bbox_to_anchor=(0.5, -0.2),
+        )
+        fig.suptitle(f"ICA labels ({self.labeler_ or 'manual'}); x = excluded")
+        return fig
+
+    def _plot_properties(self, inst: BaseRaw | None, **kwargs: Any) -> Any:
+        assert inst is not None
+        picks = self.exclude_ or list(range(min(5, self.ica_.n_components_)))
+        return self.ica_.plot_properties(
+            inst.copy().pick(self.ica_.ch_names), picks=picks, show=False, verbose=False, **kwargs
+        )
+
+    def _plot_overlay(self, inst: BaseRaw | None, **kwargs: Any) -> Any:
+        assert inst is not None
+        return self.ica_.plot_overlay(
+            inst.copy().pick(self.ica_.ch_names),
+            exclude=self.exclude_,
+            show=False,
+            verbose=False,
+            **kwargs,
+        )
 
     # ------------------------------------------------------------------
 

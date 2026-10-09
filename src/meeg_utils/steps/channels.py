@@ -10,6 +10,16 @@ from mne.io import BaseRaw
 from ..core import Step
 from ..core.step import Inst
 from ..io import get_datatypes
+from ._plotting import plot_sensor_groups
+
+#: PREP criteria shown in the "scores" figure: diagnostic, label, threshold (PyPREP defaults).
+_PREP_SCORES = {
+    "deviation": ("bad_by_deviation", "robust_channel_deviations", "robust z (amplitude)", 5.0),
+    "hf_noise": ("bad_by_hf_noise", "hf_noise_zscores", "robust z (HF noise)", 5.0),
+    "psd": ("bad_by_psd", "psd_zscore", "z (PSD)", 3.0),
+    "correlation": ("bad_by_correlation", "bad_window_fractions", "fraction of bad windows", 0.01),
+    "ransac": ("bad_by_ransac", "bad_window_fractions", "fraction of bad windows", 0.4),
+}
 
 BAD_CHANNEL_METHODS = ("auto", "prep", "maxwell")
 _MAXWELL_SYSTEMS = frozenset({"neuromag", "ctf"})
@@ -55,9 +65,18 @@ class BadChannels(Step):
     qc_ : dict
         ``previous_bads`` and, per modality, ``bads``, ``n_bads``,
         ``fraction`` and ``by_criterion``.
+    scores_ : dict
+        Per-channel detection scores and thresholds, per criterion.
+
+    Notes
+    -----
+    Figures (:meth:`plot`): ``"sensors"`` (sensor layout with previously
+    and newly marked bad channels) and ``"scores"`` (per-channel scores of
+    each criterion against its threshold).
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw,)
+    plot_kinds: ClassVar[dict[str, bool]] = {"sensors": False, "scores": False}
 
     def __init__(
         self,
@@ -100,6 +119,8 @@ class BadChannels(Step):
 
         self.qc_["previous_bads"] = list(inst.info["bads"])
         self.bads_: list[str] = []
+        self.scores_: dict[str, dict[str, Any]] = {}
+        self.info_ = inst.copy().pick(["meg", "eeg"], exclude=[]).info
         if run_prep:
             self._record("eeg", inst, *self._prep(inst))
         if run_maxwell:
@@ -134,6 +155,15 @@ class BadChannels(Step):
             reject_by_annotation=self.reject_by_annotation,
         )
         finder.find_all_bads(ransac=self.ransac)
+        for name, (group, key, label, threshold) in _PREP_SCORES.items():
+            values = finder._extra_info.get(group, {}).get(key)
+            if values is not None and np.ndim(values) == 1 and len(values) == len(eeg.ch_names):
+                self.scores_[f"PREP {name}"] = {
+                    "ch_names": list(eeg.ch_names),
+                    "values": np.asarray(values, dtype=float),
+                    "threshold": threshold,
+                    "label": label,
+                }
         by_criterion = {
             key.removeprefix("bad_by_"): sorted(map(str, chs))
             for key, chs in finder.get_bads(as_dict=True).items()
@@ -148,19 +178,66 @@ class BadChannels(Step):
         meg = inst.copy().pick(["meg", "ref_meg"], exclude=[])
         if self.system_ == "ctf" and meg.compensation_grade != 0:
             meg.apply_gradient_compensation(0, verbose=False)  # required by Maxwell filtering
-        noisy, flat = find_bad_channels_maxwell(
+        noisy, flat, scores = find_bad_channels_maxwell(
             meg,
             limit=self.limit,
             origin=self.origin,
             cross_talk=self.cross_talk,
             calibration=self.calibration,
             h_freq=self.h_freq,
+            return_scores=True,
             verbose=False,
         )
+        noisy_scores = np.nanmax(scores["scores_noisy"], axis=1)
+        limits = np.nanmax(scores["limits_noisy"], axis=1)
+        for ch_type in np.unique(scores["ch_types"]):
+            sel = np.asarray(scores["ch_types"]) == ch_type
+            self.scores_[f"Maxwell {ch_type}"] = {
+                "ch_names": list(np.asarray(scores["ch_names"])[sel]),
+                "values": noisy_scores[sel],
+                "threshold": float(np.nanmax(limits[sel])),
+                "label": "max noisy score over time bins",
+            }
         found = sorted(set(noisy) | set(flat))
         found = [ch for ch in found if ch not in inst.info["bads"]]
         n_meg = len(meg.copy().pick("meg", exclude=[]).ch_names)
         return found, {"noisy": sorted(noisy), "flat": sorted(flat)}, n_meg
+
+    def _plot_sensors(self, inst: BaseRaw | None) -> Any:
+        return plot_sensor_groups(
+            self.info_,
+            {"previously bad": self.qc_["previous_bads"], "detected": self.bads_},
+            title=f"Bad channels ({self.method})",
+        )
+
+    def _plot_scores(self, inst: BaseRaw | None) -> Any:
+        import matplotlib.pyplot as plt
+
+        if not self.scores_:
+            raise ValueError("No detection scores were recorded.")
+        fig, axes = plt.subplots(
+            len(self.scores_),
+            1,
+            figsize=(10, 2.2 * len(self.scores_)),
+            squeeze=False,
+            layout="constrained",
+        )
+        for ax, (name, score) in zip(axes[:, 0], self.scores_.items(), strict=True):
+            values = np.asarray(score["values"], dtype=float)
+            colors = ["C3" if ch in self.bads_ else "0.6" for ch in score["ch_names"]]
+            ax.bar(np.arange(len(values)), np.nan_to_num(values), color=colors, width=0.8)
+            ax.axhline(score["threshold"], color="C3", ls="--", lw=1, label="threshold")
+            ax.set(title=name, ylabel=score["label"], xlim=(-1, len(values)))
+            if len(values) <= 64:
+                ax.set_xticks(np.arange(len(values)), score["ch_names"], rotation=90, fontsize=6)
+                for tick, ch in zip(ax.get_xticklabels(), score["ch_names"], strict=True):
+                    if ch in self.bads_:  # e.g. flat channels, whose scores are 0 or NaN
+                        tick.set(color="C3", fontweight="bold")
+            else:
+                ax.set_xticks([])
+        axes[0, 0].legend(frameon=False, fontsize="small")
+        fig.suptitle("Bad-channel detection scores (detected channels in red)")
+        return fig
 
     def _record(
         self, modality: str, inst: BaseRaw, found: list[str], by: dict[str, list[str]], n: int
@@ -197,9 +274,15 @@ class Interpolate(Step):
     ----------
     qc_ : dict
         ``interpolated`` (channel names) and ``fraction`` of channels.
+
+    Notes
+    -----
+    Figures (:meth:`plot`): ``"sensors"``, the sensor layout with the
+    interpolated channels highlighted.
     """
 
     accepts: ClassVar[tuple[type, ...]] = (BaseRaw,)
+    plot_kinds: ClassVar[dict[str, bool]] = {"sensors": False}
 
     def __init__(
         self,
@@ -216,7 +299,8 @@ class Interpolate(Step):
 
     def _transform(self, inst: Inst) -> Inst:
         bads = [ch for ch in inst.info["bads"] if ch not in self.exclude]
-        n_data = len(inst.copy().pick(["meg", "eeg"], exclude=[]).ch_names)
+        self.info_ = inst.copy().pick(["meg", "eeg"], exclude=[]).info
+        n_data = len(self.info_.ch_names)
         self.qc_.update(interpolated=bads, fraction=len(bads) / n_data if n_data else 0.0)
         if bads:
             inst.interpolate_bads(
@@ -228,6 +312,13 @@ class Interpolate(Step):
                 verbose=False,
             )
         return inst
+
+    def _plot_sensors(self, inst: Inst | None) -> Any:
+        if not hasattr(self, "info_"):
+            raise ValueError("The 'sensors' plot needs the step to have transformed data.")
+        return plot_sensor_groups(
+            self.info_, {"interpolated": self.qc_["interpolated"]}, title="Interpolated channels"
+        )
 
 
 class Reference(Step):

@@ -110,6 +110,7 @@ class TestLineNoise:
         assert step.fline_ == 50.0  # from info["line_freq"]
         assert qc["suppression_db"] > 10
         assert qc["distortion_db"] < 0.5
+        assert qc["underclean_fraction"] == 0
         truth = make_eeg(line=False)  # same seed: identical except for the line noise
         residual_db = 10 * np.log10(
             _band_power(out, "eeg", 48, 52) / _band_power(truth, "eeg", 48, 52)
@@ -336,3 +337,49 @@ def test_eeg_pipeline_end_to_end(eeg_bad: BaseRaw, tmp_path) -> None:
     fname = io.save_derivative(out, "/data/sub-01_task-rest_eeg.vhdr", tmp_path, pipeline=pipe)
     back = mne.io.read_raw_fif(fname, verbose=False)
     assert back.ch_names == out.ch_names
+
+
+# ----------------------------------------------------------------------
+# Figures
+
+
+class TestPlotInterface:
+    """The plot() interface shared by steps and pipelines."""
+
+    def test_errors(self, eeg: BaseRaw) -> None:
+        """Unfitted steps, unknown kinds, missing data and stray options are rejected."""
+        from sklearn.exceptions import NotFittedError
+
+        step = S.ICA(n_components=5, labeler=None, max_iter=100)
+        with pytest.raises(NotFittedError):
+            step.plot()
+        step.fit(eeg)
+        with pytest.raises(ValueError, match="no 'nope' plot; available"):
+            step.plot("nope")
+        with pytest.raises(ValueError, match="needs inst=<data>"):
+            step.plot("overlay")
+        with pytest.raises(TypeError, match="only be passed together with kind"):
+            step.plot(colorbar=True)
+        assert set(step.plot("components", colorbar=True)) == {"components"}
+
+    def test_steps_without_figures(self, eeg: BaseRaw) -> None:
+        """Steps without figures return an empty dict."""
+        assert S.Reference().fit(eeg).plot() == {}
+
+    def test_pipeline_plot_gives_each_step_its_input(self, eeg_bad: BaseRaw) -> None:
+        """pipe.plot(inst=...) replays the fitted steps so each plots its own input."""
+        pipe = Pipeline(
+            [
+                ("bads", S.BadChannels("prep", ransac=False)),
+                ("interp", S.Interpolate()),
+                ("ica", S.ICA(n_components=6, labeler=None, max_iter=100)),
+            ]
+        )
+        pipe.fit(eeg_bad)
+        assert set(pipe.plot()) == {"bads", "interp", "ica"}  # fit transforms all but the last
+        figures = pipe.plot(inst=eeg_bad)
+        assert set(figures["ica"]) == {"components", "labels", "properties", "overlay"}
+        assert set(figures["interp"]) == {"sensors"}
+        import matplotlib.pyplot as plt
+
+        plt.close("all")
