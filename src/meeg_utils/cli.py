@@ -102,6 +102,14 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("--sources", nargs="+", required=True, help="recordings or a BIDS root")
     run.add_argument("--out", type=Path, required=True, help="derivatives root")
     run.add_argument("--desc", default="preproc", help="BIDS desc entity of the outputs")
+    run.add_argument(
+        "--epochs",
+        nargs="?",
+        const="preset",
+        metavar="CONFIG",
+        help="also epoch each run and combine the runs of each session (sources: one BIDS "
+        "root); without CONFIG, the epochs stage of --preset",
+    )
     existing = run.add_mutually_exclusive_group()
     existing.add_argument("--skip-existing", action="store_true", help="skip finished recordings")
     existing.add_argument("--overwrite", action="store_true", help="replace existing outputs")
@@ -159,12 +167,18 @@ def _run(args: argparse.Namespace) -> int:
     if (args.config is None) == (args.preset is None):
         raise SystemExit("meu run: give either a configuration file or --preset, not both.")
     sources = _expand(args.sources, datatype=args.datatype)
+    options: dict[str, Any] = {}
     if args.preset is not None:
-        pipeline = Pipeline.preset(args.preset, **_preset_options(args, sources))
+        options = _preset_options(args, sources)
+        if args.epochs is not None:
+            options.pop("stage", None)
+        pipeline = Pipeline.preset(args.preset, **options)
     else:
         if args.option:
             raise SystemExit("meu run: --option only applies to --preset.")
         pipeline = Pipeline.from_yaml(args.config)
+    if args.epochs is not None:
+        return _run_dataset(args, pipeline, options)
     records = process(
         pipeline,
         sources,
@@ -182,6 +196,37 @@ def _run(args: argparse.Namespace) -> int:
     n_failed = sum(r["status"] == "failed" for r in records)
     print(f"\n{len(records) - n_failed}/{len(records)} recordings done, {n_failed} failed.")
     return 1 if n_failed else 0
+
+
+def _run_dataset(args: argparse.Namespace, pipeline: Any, options: dict[str, Any]) -> int:
+    """meu run --epochs: preprocess, epoch and combine a BIDS dataset (meu.process_dataset)."""
+    from .core import Pipeline
+    from .dataset import Dataset, process_dataset
+
+    if len(args.sources) != 1 or not Path(args.sources[0]).is_dir():
+        raise SystemExit("meu run --epochs: --sources must be the root of one BIDS dataset.")
+    if args.epochs == "preset":
+        if args.preset is None:
+            raise SystemExit("meu run --epochs: give a configuration file, or use --preset.")
+        epochs = Pipeline.preset(args.preset, stage="epochs", **options)
+    else:
+        epochs = Pipeline.from_yaml(args.epochs)
+    dataset = Dataset(args.sources[0], datatype=args.datatype)
+    result = process_dataset(
+        dataset,
+        args.out,
+        preprocessing=pipeline,
+        epochs=epochs,
+        desc=args.desc,
+        n_jobs=args.jobs,
+        skip_existing=not args.overwrite,
+        on_error="warn",
+    )
+    log = result.to_csv(Path(args.out) / "meu_batch.csv")
+    for record in result.failed:
+        print(f"failed  [{record['stage']}] {record['source']}: {record['error']}")
+    print(f"\n{dataset!r}\n{result!r}\nLog: {log}")
+    return 1 if result.failed else 0
 
 
 # ----------------------------------------------------------------------

@@ -51,7 +51,8 @@ def combine(
     Returns
     -------
     Epochs
-        The concatenated epochs.
+        The concatenated epochs. The runs' annotations are not kept (MNE
+        cannot concatenate them); events and metadata are.
 
     Raises
     ------
@@ -79,6 +80,8 @@ def combine(
     if bads == "interpolate" and union:
         for run in runs:
             run.interpolate_bads(reset_bads=True, mode="accurate", verbose=False)
+    for run in runs:  # MNE cannot concatenate the annotations of epochs; drop them explicitly
+        run.set_annotations(None)
     logger.info(
         f"Combining {len(runs)} runs ({sum(len(r) for r in runs)} epochs); "
         f"bad channels ({bads}): {union}"

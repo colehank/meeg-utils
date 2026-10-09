@@ -39,6 +39,13 @@ unless ``--option system=...`` is given:
        --sources derivatives/sub-*/meg/*_desc-preproc_meg.fif --out derivatives/ --desc epochs
    meu run --preset eeg-rest --option stage=epochs --option epoch_duration=2 ...
 
+With ``--epochs`` the sources must be one BIDS root, and every session is
+taken through preprocessing, epoching and combination of its runs
+(:func:`meeg_utils.process_dataset`; existing outputs are skipped, so the
+command resumes). ``--epochs`` alone uses the epochs stage of ``--preset``;
+``--epochs epochs.yaml`` a configuration file. The log of every run and
+session is written to ``<out>/meu_batch.csv``.
+
 ``pipeline.yaml`` is written by :meth:`meeg_utils.Pipeline.to_yaml`. Each
 recording is processed separately (:func:`meeg_utils.process`); the exit
 status is 1 if any recording failed.

@@ -161,3 +161,32 @@ class TestPresetOptions:
         assert _preset_options(args, [neuromag_fname])["system"] == "neuromag"
         args.option = ["system=ctf"]
         assert _preset_options(args, [neuromag_fname])["system"] == "ctf"
+
+
+@pytest.mark.filterwarnings(
+    "ignore:Converting data files to BrainVision format",
+    "ignore:There are channels without locations:RuntimeWarning",
+    "ignore:Not setting position of 1 eog channel:RuntimeWarning",
+)
+def test_run_dataset_with_epochs(tmp_path):
+    from .simulation import make_erp
+
+    root = tmp_path / "bids"
+    for run in ("1", "2"):
+        path = BIDSPath(subject="01", task="oddball", run=run, datatype="eeg", root=root)
+        write_raw_bids(
+            make_erp(seed=int(run)), path, allow_preload=True, format="BrainVision", verbose=False
+        )
+    pre = tmp_path / "pre.yaml"
+    meu.Pipeline([("filter", S.Filter(1.0, 30.0))]).to_yaml(pre)
+    ep = tmp_path / "epochs.yaml"
+    meu.Pipeline([("epoch", S.Epoch(["stim/target", "stim/standard"], -0.1, 0.5))]).to_yaml(ep)
+    out = tmp_path / "deriv"
+    args = ["run", str(pre), "--sources", str(root), "--out", str(out), "--epochs", str(ep), "-q"]
+    assert main(args) == 0
+    assert (out / "sub-01" / "eeg" / "sub-01_task-oddball_desc-epochs_epo.fif").exists()
+    assert (out / "meu_batch.csv").exists()
+    assert main(args) == 0  # resumes: everything is skipped
+    with pytest.raises(SystemExit, match="root of one BIDS dataset"):
+        main(["run", str(pre), "--sources", str(root / "sub-01"), str(root), "--out", str(out),
+              "--epochs", str(ep)])  # fmt: skip

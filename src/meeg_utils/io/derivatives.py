@@ -30,6 +30,8 @@ def save_derivative(
     pipeline: Pipeline | None = None,
     desc: str = "preproc",
     overwrite: bool = False,
+    sources: list[str | Path | BIDSPath] | None = None,
+    metadata: dict[str, Any] | None = None,
 ) -> Path:
     """Save processed data as a BIDS derivative, with a provenance sidecar.
 
@@ -60,6 +62,11 @@ def save_derivative(
         Value of the BIDS ``desc`` entity.
     overwrite : bool
         Whether to overwrite existing files.
+    sources : list | None
+        The files the data were derived from, for the sidecar's ``Sources``
+        (default: ``source``), e.g. the runs combined into one file.
+    metadata : dict | None
+        Additional entries for the sidecar's ``MeegUtils`` section.
 
     Returns
     -------
@@ -107,10 +114,14 @@ def save_derivative(
     else:
         inst.save(fname, overwrite=overwrite, split_naming="bids", verbose=False)
 
-    sidecar.write_text(
-        json.dumps(_sidecar(source_ref, desc, pipeline), indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
+    content = _sidecar(source_ref, desc, pipeline)
+    if sources is not None:
+        content["Sources"] = [
+            _bids_uri(s) if isinstance(s, BIDSPath) else _bids_uri_or_path(s) for s in sources
+        ]
+    if metadata:
+        content.setdefault("MeegUtils", {}).update(metadata)
+    sidecar.write_text(json.dumps(content, indent=2, ensure_ascii=False), encoding="utf-8")
     logger.info(f"Saved {type(inst).__name__} derivative to {fname}")
     return fname
 
@@ -174,6 +185,11 @@ def _bids_uri(source: BIDSPath) -> str:
         return f"bids::{fpath.relative_to(Path(str(source.root))).as_posix()}"
     except (TypeError, ValueError):
         return str(fpath)
+
+
+def _bids_uri_or_path(source: str | Path) -> str:
+    bids_path = as_bids_path(Path(source))
+    return _bids_uri(bids_path) if bids_path is not None else str(source)
 
 
 def _sidecar(source_ref: str, desc: str, pipeline: Pipeline | None) -> dict[str, Any]:

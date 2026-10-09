@@ -26,6 +26,10 @@ Added
   z-scoring on short baselines), ``steps.DropChannels``,
   ``steps.AutoReject`` (autoreject), ``steps.FixedLengthEpochs`` and
   ``meu.epochs.combine`` for runs.
+* ``meu.Dataset`` and ``meu.process_dataset``: select the recordings of a
+  BIDS dataset, preprocess every run, epoch them (MEG runs aligned to their
+  average head position) and combine the runs of each session; resumable,
+  with a log of every run and session (``meu run --epochs``).
 * Recommended presets ``eeg-erp``, ``eeg-rest``, ``meg-erp`` and
   ``meg-rest`` (``stage="preprocessing"`` / ``"epochs"``; MEG by system),
   with the source of every parameter in ``docs/presets/recommended.md``.

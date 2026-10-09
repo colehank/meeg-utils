@@ -14,9 +14,12 @@ except PackageNotFoundError:  # pragma: no cover - running from a source tree
 from . import epochs, io, presets, qc, report, steps
 from .batch import process
 from .core import Pipeline, Step
+from .dataset import BatchResult, Dataset, process_dataset
 from .logger import log_to_file, logger, setup_logging, teardown_logging
 
 __all__ = [
+    "BatchResult",
+    "Dataset",
     "Pipeline",
     "Step",
     "epochs",
@@ -25,6 +28,7 @@ __all__ = [
     "logger",
     "presets",
     "process",
+    "process_dataset",
     "qc",
     "report",
     "setup_logging",

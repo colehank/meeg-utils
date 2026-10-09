@@ -20,6 +20,38 @@ paths inside a BIDS dataset are named like BIDS paths
 (``sub-01/eeg/sub-01_task-rest_desc-preproc_eeg.fif``), other files are
 written to the root as ``<name>_desc-preproc_<datatype>.fif``.
 
+Whole datasets
+--------------
+
+:class:`meeg_utils.Dataset` selects the recordings of a BIDS dataset and
+groups the runs of each session and task; :func:`meeg_utils.process_dataset`
+takes them through every stage:
+
+.. code-block:: python
+
+   ds = meu.Dataset("bids", datatype="meg", tasks=["faces"], exclude=["sub-07"])
+   result = meu.process_dataset(
+       ds, "bids/derivatives/meu",
+       preprocessing=meu.Pipeline.preset("meg-erp", system="neuromag"),
+       epochs=meu.Pipeline.preset("meg-erp", stage="epochs", event_id=["face", "house"]),
+       n_jobs=8,
+   )
+   result.to_csv("bids/derivatives/meu/batch.csv")
+   result.failed          # one record per failed run or session
+
+1. every run is preprocessed with its own copy of the pipeline (``desc-preproc``);
+2. per session and task, MEG runs are mapped to their average head
+   position (``align="average"``), and each run is epoched (``desc-epochs``,
+   with the run entity);
+3. the runs are combined (:func:`meeg_utils.epochs.combine`) into one file
+   without the run entity, e.g. ``sub-01_task-faces_desc-epochs_epo.fif``,
+   whose sidecar lists the runs.
+
+Outputs that exist are skipped by default (``skip_existing=True``), so
+calling it again resumes an interrupted batch and retries what failed.
+From the command line: ``meu run --preset meg-erp --epochs --option
+"event_id=[face, house]" --sources bids --out bids/derivatives/meu``.
+
 Errors
 ------
 

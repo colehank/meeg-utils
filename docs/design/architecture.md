@@ -33,7 +33,7 @@
 
 ```
 ┌──────────────────────────────────────────────────────────────┐
-│ L3  数据集层   Dataset / BatchRunner                          │  遍历 BIDS、并行、断点续跑、失败汇总
+│ L3  数据集层   Dataset / process_dataset                      │  遍历 BIDS、并行、断点续跑、失败汇总
 ├──────────────────────────────────────────────────────────────┤
 │ L2  流程层     Pipeline([(name, Step), ...]) + 预设            │  组合、改参、切片、类型转换、YAML
 ├──────────────────────────────────────────────────────────────┤
@@ -328,7 +328,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 | **P0 打地基**（已完成） | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；`HeadAlign` 跨 run 头位置对齐；`meu.process` 批处理（`BatchRunner` 的最小版本）；删除旧的 `PreprocessingPipeline` / `BatchPreprocessingPipeline` 和 meegkit；版本 0.2.0 |
 | **P1 质量检查 + 命令行（第一部分）**（已完成） | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`S.BridgedElectrodes`、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找；命令行 `meu qc`、`meu run` |
 | **P1.5 分段**（已完成） | `epochs` 模块：`Events`、`Epoch`、`Baseline`、`AutoReject`；跨 run 合并（通道集合统一、头位置对齐）。HAD-MEEG 分段阶段的修正在这里落地 |
-| **P2 预处理补全**（进行中） | 已完成：`Maxwell`（SSS/tSSS、头动校正）、`HFC`、`Regression`（原名 RefRegression）、`BadSegments`、`ASR`、`SNS`、`FixedLengthEpochs`、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，MEG 按 `system=` 选择，命令行自动识别）。未完成：L3 `Dataset` / `BatchRunner`；第二批采集 QC |
+| **P2 预处理补全**（进行中） | 已完成：`Maxwell`（SSS/tSSS、头动校正）、`HFC`、`Regression`（原名 RefRegression）、`BadSegments`、`ASR`、`SNS`、`FixedLengthEpochs`、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，MEG 按 `system=` 选择，命令行自动识别）。L3 数据集层：`meu.Dataset`（按 BIDS 实体选取、按 session/task 分组）与 `meu.process_dataset`（预处理 → 分段 → 合并，MEG 自动对齐到各 run 的平均头位置，断点续跑，失败汇总）；原计划的 `BatchRunner` 类改为函数，与“只有 fit/transform、不设 run()”的约定一致。未完成：第二批采集 QC |
 | **P3 命令行补全** | `meu preset` 等其余子命令。分析功能暂缓 |
 | **暂缓** | 分析（ERP/ERF、PSD + specparam、时频、解码、连接性、DSS）、`group` 模块 |
 | **暂缓（可选）** | 源分析：正向模型、逆解、ROI |

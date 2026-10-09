@@ -12,6 +12,9 @@ Pipelines and steps
    Pipeline
    Step
    process
+   Dataset
+   process_dataset
+   BatchResult
 
 Processing steps (``meeg_utils.steps``)
 ---------------------------------------
