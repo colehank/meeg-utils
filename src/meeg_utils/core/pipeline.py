@@ -389,6 +389,33 @@ class Pipeline(BaseEstimator):
         }
 
     @classmethod
+    def preset(cls, name: str, **kwargs: Any) -> Pipeline:
+        """Build a ready-made pipeline, see :mod:`meeg_utils.presets`.
+
+        Parameters
+        ----------
+        name : str
+            Preset name (e.g. ``"had-meeg"``); :func:`meeg_utils.presets.available`
+            lists them.
+        **kwargs
+            Preset options, e.g. ``datatype="meg"``.
+
+        Returns
+        -------
+        Pipeline
+            A new, unfitted pipeline; change parameters with ``set_params``.
+
+        Examples
+        --------
+        >>> pipe = Pipeline.preset("had-meeg", datatype="eeg")
+        >>> pipe.set_params(ica__threshold=0.9)  # doctest: +ELLIPSIS
+        Pipeline(...)
+        """
+        from ..presets import get
+
+        return get(name, **kwargs)
+
+    @classmethod
     def from_dict(cls, config: dict[str, Any]) -> Pipeline:
         """Build a pipeline from :meth:`to_dict` output.
 

@@ -101,7 +101,7 @@ class Pipeline(BaseEstimator):
     named_steps: dict[str, Step]
     def insert_after(self, name, new_name, step); def replace(self, name, step)
     def to_yaml(self, path); @classmethod def from_yaml(cls, path)
-    @classmethod def preset(cls, name, system="auto") -> Pipeline
+    @classmethod def preset(cls, name, **options) -> Pipeline   # 例如 datatype="meg"
     # 拟合后：system_, qc_, provenance_
 
 
@@ -196,6 +196,8 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 |---|---|---|
 | **数据集型**（如 `had-meeg`、`nod-meeg`） | 以已发表数据集的预处理为蓝本 | 沿用原流程的步骤和参数，但**已知问题一律修正**；每处与原代码不同的地方都在预设文档中逐条列出（原做法、问题、修正、依据） |
 | **推荐型**（如 `eeg-erp`、`meg-erp`、`eeg-rest`、`meg-rest`） | 本库推荐的默认流程 | 每个参数都要能追溯到文献或权威流程的默认值，在文档中逐条注明出处 |
+
+已实现：`had-meeg`（`meu.presets.available()` 列出全部预设），差异文档见 [`docs/presets/had-meeg.md`](../presets/had-meeg.md)。
 
 推荐型预设的参考来源（逐条核对后再采用）：MNE-BIDS-Pipeline 的默认配置、Jas et al. 2018（*Frontiers in Neuroscience*，MNE 组分析可复现示例）、FLUX（Ferrante et al. 2022，MEG 流程）、PREP（Bigdely-Shamlo et al. 2015）、ICLabel（Pion-Tonachini et al. 2019）的输入要求、ZapLine-plus（Klug & Kloosterman 2022）。
 
