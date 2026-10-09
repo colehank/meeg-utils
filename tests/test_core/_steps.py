@@ -34,7 +34,7 @@ class Demean(Step):
         self.qc_["max_abs_mean"] = float(np.abs(self.means_).max())
 
     def _transform(self, inst):
-        picks = mne.pick_types(inst.info, eeg=True)
+        picks = mne.pick_types(inst.info, eeg=True, exclude=[])
         inst._data[picks] -= self.means_
         return inst
 

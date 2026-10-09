@@ -8,13 +8,16 @@ import time
 import warnings
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any, Self
+from typing import Any, Self, TypeAlias
 
+from mne_bids import BIDSPath
 from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
-from ..io import detect_system
+from ..io import detect_system, read
 from .step import Inst, Step
+
+Source: TypeAlias = Inst | str | Path | BIDSPath
 
 
 class Pipeline(BaseEstimator):
@@ -55,7 +58,7 @@ class Pipeline(BaseEstimator):
     # ------------------------------------------------------------------
     # Fitting and transforming
 
-    def fit(self, inst: Inst, y: Any = None) -> Self:
+    def fit(self, inst: Source, y: Any = None) -> Self:
         """Fit every step in sequence.
 
         Each step except the last is fitted and then transforms the data
@@ -63,8 +66,8 @@ class Pipeline(BaseEstimator):
 
         Parameters
         ----------
-        inst : Raw | Epochs | Evoked
-            The data.
+        inst : Raw | Epochs | Evoked | str | Path | BIDSPath
+            The data, or a recording to read with :func:`meeg_utils.io.read`.
         y : None
             Ignored; present for scikit-learn API compatibility.
 
@@ -76,13 +79,13 @@ class Pipeline(BaseEstimator):
         self._fit(inst, transform_last=False)
         return self
 
-    def fit_transform(self, inst: Inst, y: Any = None) -> Inst:
+    def fit_transform(self, inst: Source, y: Any = None) -> Inst:
         """Fit every step in sequence and return the fully processed data.
 
         Parameters
         ----------
-        inst : Raw | Epochs | Evoked
-            The data.
+        inst : Raw | Epochs | Evoked | str | Path | BIDSPath
+            The data, or a recording to read with :func:`meeg_utils.io.read`.
         y : None
             Ignored; present for scikit-learn API compatibility.
 
@@ -93,14 +96,15 @@ class Pipeline(BaseEstimator):
         """
         return self._fit(inst, transform_last=True)
 
-    def transform(self, inst: Inst) -> Inst:
+    def transform(self, inst: Source) -> Inst:
         """Apply every fitted step in sequence, without refitting.
 
         Parameters
         ----------
-        inst : Raw | Epochs | Evoked
-            The data. Must come from the same acquisition system as the data
-            the pipeline was fitted on.
+        inst : Raw | Epochs | Evoked | str | Path | BIDSPath
+            The data, or a recording to read with :func:`meeg_utils.io.read`.
+            Must come from the same acquisition system as the data the
+            pipeline was fitted on.
 
         Returns
         -------
@@ -108,6 +112,7 @@ class Pipeline(BaseEstimator):
             The processed data.
         """
         check_is_fitted(self, "system_")
+        inst, owned = _load(inst)
         self._validate(type(inst))
         system = detect_system(inst)
         if system != self.system_:
@@ -115,12 +120,13 @@ class Pipeline(BaseEstimator):
                 f"The pipeline was fitted on {self.system_!r} data and cannot "
                 f"transform {system!r} data."
             )
-        data = inst.copy() if self.copy else inst
+        data = inst.copy() if self.copy and not owned else inst
         for _, step in self.steps:
             data = step.transform(data, copy=False)
         return data
 
-    def _fit(self, inst: Inst, *, transform_last: bool) -> Inst:
+    def _fit(self, inst: Source, *, transform_last: bool) -> Inst:
+        inst, owned = _load(inst)
         self._validate(type(inst))
         self.system_ = detect_system(inst)
         self.qc_: dict[str, dict[str, Any]] = {}
@@ -130,7 +136,7 @@ class Pipeline(BaseEstimator):
             "steps": [],
         }
 
-        data = inst.copy() if self.copy else inst
+        data = inst.copy() if self.copy and not owned else inst
         last = len(self.steps) - 1
         for i, (name, step) in enumerate(self.steps):
             start = time.perf_counter()
@@ -409,6 +415,13 @@ class Pipeline(BaseEstimator):
 
 # ----------------------------------------------------------------------
 # Helpers
+
+
+def _load(source: Source) -> tuple[Inst, bool]:
+    """Return the data and whether it was read here (so need not be copied)."""
+    if isinstance(source, str | Path | BIDSPath):
+        return read(source), True
+    return source, False
 
 
 def _class_path(cls: type) -> str:
