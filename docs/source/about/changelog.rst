@@ -9,6 +9,20 @@ and this project adheres to `Semantic Versioning <https://semver.org/spec/v2.0.0
 [Unreleased]
 ------------
 
+Added
+~~~~~
+
+* ``meu.qc``: acquisition-quality checks (amplitude, bridging, impedance,
+  outlying channels, narrowband noise, muscle, blinks, heart rate, head
+  movement, digitization, events) with documented thresholds and figures;
+  ``inspect`` for one recording, ``inspect_dataset`` for a dataset with
+  outlying recordings flagged.
+* ``meu.report.build``: HTML reports of QC results and fitted pipelines.
+* ``steps.BridgedElectrodes``: repair of bridged EEG electrodes.
+* ``BadChannels(cross_talk="auto", calibration="auto")``: Neuromag
+  cross-talk and fine-calibration files are found in BIDS.
+* The ``meu`` command line: ``meu qc`` and ``meu run``.
+
 [0.2.0]
 -------
 

@@ -159,7 +159,8 @@ class DatasetQC:
         outlying = {(o["source"], o["metric"].split(".")[0]) for o in self.outliers}
         with plt.ioff():
             fig, ax = plt.subplots(
-                figsize=(1.0 + 0.7 * len(checks), 1.5 + 0.28 * len(sources)), layout="constrained"
+                figsize=(max(6.0, 1.0 + 0.7 * len(checks)), max(3.0, 1.5 + 0.28 * len(sources))),
+                layout="constrained",
             )
             cmap = ListedColormap(["#4caf50", "#ffb300", "#e53935"])
             ax.imshow(grid, cmap=cmap, vmin=0, vmax=2, aspect="auto", interpolation="nearest")

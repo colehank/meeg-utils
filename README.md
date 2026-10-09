@@ -40,16 +40,25 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
 - **Steps** (`meu.steps`): `Filter`, `Resample`, `LineNoise` (ZapLine,
   ZapLine-plus, notch), `BadChannels` (PREP, Maxwell), `Interpolate`,
   `Reference`, `ICA` (ICLabel / MEGnet labelling, manual relabelling),
-  `HeadAlign` (map MEG runs to a common head position).
+  `HeadAlign` (map MEG runs to a common head position), `BridgedElectrodes`.
 - **Pipelines** follow scikit-learn: parameters are set in the constructor,
   `fit` / `transform` / `fit_transform` are the only entry points,
   `set_params(ica__threshold=0.9)`, `clone`, slicing, YAML configurations.
 - **Data integrity**: steps never drop channels or shift the time axis
   silently; `first_samp`, `meas_date` and annotations are preserved. Every
   step passes the contract checks in `meeg_utils.testing.check_step`.
-- **Quality control**: `qc_` metrics on every step and `plot()` figures
-  (spectra before/after, bad-channel scores, sensor maps, ICA components,
-  head positions, ...).
+- **Acquisition quality control** (`meu.qc`): bridged electrodes,
+  impedances, flat/clipped channels, outlying channels, line and other
+  narrowband noise, muscle, blink and heart rate (is the EOG/ECG working?),
+  MEG head movement and HPI coils, digitization, event counts. Thresholds
+  are documented with their source; `meu.qc.inspect_dataset` flags
+  outlying recordings across a dataset; `meu.report.build` writes HTML
+  reports.
+- **Processing quality control**: `qc_` metrics on every step and `plot()`
+  figures (spectra before/after, bad-channel scores, sensor maps, ICA
+  components, head positions, ...).
+- **Command line**: `meu qc /data/bids --out qc/` and
+  `meu run --preset had-meeg --datatype eeg --sources /data/bids --out derivatives/`.
 - **Presets**: `meu.Pipeline.preset("had-meeg", datatype="meg")` reproduces
   the [HAD-MEEG](https://github.com/colehank/HAD-MEEG) preprocessing with its
   known issues fixed; see [docs/presets/had-meeg.md](docs/presets/had-meeg.md).

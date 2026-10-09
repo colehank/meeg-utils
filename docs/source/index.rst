@@ -53,8 +53,10 @@ Highlights
    user_guide/installation
    user_guide/quickstart
    user_guide/steps
+   user_guide/qc
    user_guide/presets
    user_guide/batch_processing
+   user_guide/cli
 
 .. toctree::
    :maxdepth: 2

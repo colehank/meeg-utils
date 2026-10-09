@@ -22,7 +22,7 @@ LEVELS = ("ok", "warn", "fail")
 class Finding:
     """One evaluated quality criterion.
 
-    Attributes
+    Parameters
     ----------
     check : str
         Name of the check that produced it.

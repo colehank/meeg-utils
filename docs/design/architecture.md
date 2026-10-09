@@ -326,7 +326,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 | 阶段 | 内容 |
 |---|---|
 | **P0 打地基**（已完成） | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；`HeadAlign` 跨 run 头位置对齐；`meu.process` 批处理（`BatchRunner` 的最小版本）；删除旧的 `PreprocessingPipeline` / `BatchPreprocessingPipeline` 和 meegkit；版本 0.2.0 |
-| **P1 质量检查 + 命令行（第一部分）** | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`S.BridgedElectrodes`、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找；命令行 `meu qc`、`meu run` |
+| **P1 质量检查 + 命令行（第一部分）**（已完成） | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`S.BridgedElectrodes`、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找；命令行 `meu qc`、`meu run` |
 | **P1.5 分段** | `epochs` 模块：`Events`、`Epoch`、`Baseline`、`AutoReject`；跨 run 合并（通道集合统一、头位置对齐）。HAD-MEEG 分段阶段的修正在这里落地 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、L3 `Dataset` / `BatchRunner`；第二批采集 QC |
 | **P3 命令行补全** | `meu preset` 等其余子命令。分析功能暂缓 |

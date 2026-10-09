@@ -27,6 +27,7 @@ Processing steps (``meeg_utils.steps``)
    steps.Reference
    steps.ICA
    steps.HeadAlign
+   steps.BridgedElectrodes
 
 Reading and writing (``meeg_utils.io``)
 ---------------------------------------
@@ -40,6 +41,32 @@ Reading and writing (``meeg_utils.io``)
    io.detect_system
    io.get_datatypes
    io.average_dev_head_t
+
+Quality control (``meeg_utils.qc``)
+-----------------------------------
+
+.. autosummary::
+   :toctree: _autosummary
+
+   qc.inspect
+   qc.inspect_dataset
+   qc.find_recordings
+   qc.QCReport
+   qc.DatasetQC
+   qc.Finding
+   qc.Check
+   qc.Amplitude
+   qc.Bridging
+   qc.Impedance
+   qc.OutlierChannels
+   qc.NarrowbandNoise
+   qc.Muscle
+   qc.Blinks
+   qc.HeartRate
+   qc.HeadMovement
+   qc.Digitization
+   qc.Events
+   report.build
 
 Presets (``meeg_utils.presets``)
 --------------------------------
@@ -60,3 +87,4 @@ Logging and testing
    teardown_logging
    log_to_file
    testing.check_step
+   testing.check_check

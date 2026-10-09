@@ -31,6 +31,9 @@ dependencies = [
     "scikit-learn>=1.5",
 ]
 
+[project.scripts]
+meu = "meeg_utils.cli:main"
+
 [dependency-groups]
 dev = [
     # Testing
