@@ -339,7 +339,7 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 | **P1 质量检查 + 命令行（第一部分）**（已完成） | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`S.BridgedElectrodes`、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找；命令行 `meu qc`、`meu run` |
 | **P1.5 分段**（已完成） | `epochs` 模块：`Events`、`Epoch`、`Baseline`、`AutoReject`；跨 run 合并（通道集合统一、头位置对齐）。HAD-MEEG 分段阶段的修正在这里落地 |
 | **P2 预处理补全**（已完成） | 已完成：`Maxwell`（SSS/tSSS、头动校正）、`HFC`、`Regression`（原名 RefRegression）、`BadSegments`、`ASR`、`SNS`、`FixedLengthEpochs`、`ByChannelType`、推荐型预设（eeg-erp / eeg-rest / meg-erp / meg-rest，MEG 按 `system=` 选择，命令行自动识别）。L3 数据集层：`meu.Dataset`（按 BIDS 实体选取、按 session/task 分组）与 `meu.process_dataset`（预处理 → 分段 → 合并，MEG 自动对齐到各 run 的平均头位置，断点续跑，失败汇总）；原计划的 `BatchRunner` 类改为函数，与“只有 fit/transform、不设 run()”的约定一致。第二批采集 QC（§7.2）。fine calibration、时钟漂移和 3D 配准未纳入，原因见 §7.2 |
-| **P3 命令行补全** | `meu preset` 等其余子命令。分析功能暂缓 |
+| **P3 命令行补全**（已完成） | `meu preset`（列出预设及其选项、导出为 YAML）；`meu report`（单个衍生文件的报告：流程、参数、各步 QC 指标、警告、溯源和数据视图；整个衍生目录的汇总表与报告，按修正 z 分数标出离群的 run）。分析功能暂缓 |
 | **暂缓** | 分析（ERP/ERF、PSD + specparam、时频、解码、连接性、DSS）、`group` 模块 |
 | **暂缓（可选）** | 源分析：正向模型、逆解、ROI |
 

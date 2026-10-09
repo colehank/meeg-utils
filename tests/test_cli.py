@@ -190,3 +190,68 @@ def test_run_dataset_with_epochs(tmp_path):
     with pytest.raises(SystemExit, match="root of one BIDS dataset"):
         main(["run", str(pre), "--sources", str(root / "sub-01"), str(root), "--out", str(out),
               "--epochs", str(ep)])  # fmt: skip
+
+
+class TestPresetCommand:
+    def test_list(self, capsys):
+        assert main(["preset"]) == 0
+        out = capsys.readouterr().out
+        assert "eeg-erp" in out and "had-meeg" in out and "options:" in out
+
+    def test_write_and_run(self, tmp_path, recording):
+        config = tmp_path / "pipe.yaml"
+        assert main(["preset", "eeg-rest", "--option", "stage=epochs", "--option",
+                     "epoch_duration=2", "-o", str(config)]) == 0  # fmt: skip
+        pipe = meu.Pipeline.from_yaml(config)
+        assert [n for n, _ in pipe.steps] == ["epoch", "autoreject"]
+
+    def test_print(self, capsys):
+        assert main(["preset", "meg-erp", "--option", "system=kit"]) == 0
+        assert "Regression" in capsys.readouterr().out
+
+    def test_meg_needs_system(self):
+        with pytest.raises(SystemExit, match="system="):
+            main(["preset", "meg-erp"])
+        with pytest.raises(SystemExit, match="Unknown preset"):
+            main(["preset", "nope"])
+
+
+class TestReportCommand:
+    @pytest.fixture(scope="class")
+    def derivatives(self, tmp_path_factory):
+        """Six recordings, one with many artifacts, processed with BadSegments."""
+        tmp = tmp_path_factory.mktemp("report")
+        sources = []
+        for k in range(6):
+            raw = make_eeg(seed=k, blinks=False)
+            if k == 3:
+                for start in range(5, 55, 5):
+                    raw._data[:5, start * 250 : start * 250 + 100] += 5e-3
+            fname = tmp / "raw" / f"rec{k}_raw.fif"
+            fname.parent.mkdir(exist_ok=True)
+            raw.save(fname, verbose=False)
+            sources.append(fname)
+        pipe = meu.Pipeline([("segments", S.BadSegments("amplitude", reject={"eeg": 1e-3}))])
+        meu.process(pipe, sources, tmp / "deriv")
+        return tmp / "deriv"
+
+    def test_folder_summary(self, derivatives, capsys):
+        assert main(["report", str(derivatives), "--desc", "preproc", "-q"]) == 0
+        assert (
+            "rec3_raw_desc-preproc_eeg.fif: segments.amplitude.fraction" in capsys.readouterr().out
+        )
+        assert (derivatives / "derivatives_summary.csv").exists()
+        assert (derivatives / "derivatives_summary.html").exists()
+
+    def test_one_derivative(self, derivatives, tmp_path):
+        fname = derivatives / "rec0_raw_desc-preproc_eeg.fif"
+        out = tmp_path / "rec0.html"
+        assert main(["report", str(fname), "--out", str(out), "-q"]) == 0
+        text = out.read_text()
+        assert "segments: metrics" in text and "BadSegments" in text
+
+    def test_errors(self, tmp_path):
+        with pytest.raises(SystemExit, match="does not exist"):
+            main(["report", str(tmp_path / "nope.fif")])
+        with pytest.raises(ValueError, match="No meeg-utils derivatives"):
+            main(["report", str(tmp_path)])

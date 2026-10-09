@@ -23,7 +23,10 @@ Added
 * ``steps.BridgedElectrodes``: repair of bridged EEG electrodes.
 * ``BadChannels(cross_talk="auto", calibration="auto")``: Neuromag
   cross-talk and fine-calibration files are found in BIDS.
-* The ``meu`` command line: ``meu qc`` and ``meu run``.
+* The ``meu`` command line: ``meu qc``, ``meu run``, ``meu preset`` (list
+  presets, write one as YAML) and ``meu report`` (report of a saved
+  derivative, or summary of a derivatives folder with outlying runs:
+  ``meu.report.from_derivative``, ``meu.report.summarize``).
 * Epoching: ``steps.Epoch``, ``steps.Baseline`` (with a guard against
   z-scoring on short baselines), ``steps.DropChannels``,
   ``steps.AutoReject`` (autoreject), ``steps.FixedLengthEpochs`` and

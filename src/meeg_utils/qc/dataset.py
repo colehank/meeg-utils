@@ -57,28 +57,7 @@ class DatasetQC:
         return table
 
     def _outliers(self) -> list[dict[str, Any]]:
-        columns = sorted({c for row in self.table.values() for c in row})
-        found = []
-        for column in columns:
-            sources = [s for s, row in self.table.items() if column in row]
-            if len(sources) < self.min_recordings:
-                continue
-            x = np.array([self.table[s][column] for s in sources])
-            mad = np.median(np.abs(x - np.median(x)))
-            if mad == 0:
-                continue
-            z = 0.6745 * (x - np.median(x)) / mad
-            for source, value, zi in zip(sources, x, z, strict=True):
-                if abs(zi) > OUTLIER_Z:
-                    found.append(
-                        {
-                            "source": source,
-                            "metric": column,
-                            "value": value,
-                            "z": round(float(zi), 2),
-                        }
-                    )
-        return found
+        return find_outliers(self.table, min_recordings=self.min_recordings)
 
     @property
     def levels(self) -> dict[str, dict[str, str]]:
@@ -257,6 +236,58 @@ def find_recordings(root: str | Path) -> list[BIDSPath]:
         (p for p in paths if p.split is None or p.split == "01"),
         key=lambda p: str(p.fpath),
     )
+
+
+def find_outliers(
+    table: dict[str, dict[str, float]], *, min_recordings: int = 5
+) -> list[dict[str, Any]]:
+    """Recordings whose value of a metric is an outlier (modified z > :data:`OUTLIER_Z`).
+
+    Parameters
+    ----------
+    table : dict
+        Recording mapped to ``{metric: value}``.
+    min_recordings : int
+        Metrics measured on fewer recordings are skipped.
+
+    Returns
+    -------
+    list of dict
+        ``source``, ``metric``, ``value`` and ``z`` of each outlier.
+
+    Notes
+    -----
+    When more than half of the values are identical (e.g. most runs have no
+    bad segment), the median absolute deviation is zero and the mean
+    absolute deviation is used instead (``z = (x - median) / (1.253314 *
+    MeanAD)``), the usual fallback of the modified z-score.
+    """
+    columns = sorted({c for row in table.values() for c in row})
+    found = []
+    for column in columns:
+        sources = [s for s, row in table.items() if column in row]
+        if len(sources) < min_recordings:
+            continue
+        x = np.array([table[s][column] for s in sources], dtype=float)
+        deviation = np.abs(x - np.median(x))
+        mad = np.median(deviation)
+        if mad > 0:
+            z = 0.6745 * (x - np.median(x)) / mad
+        elif deviation.mean() > 0:  # most values identical (e.g. zero): mean absolute deviation
+            z = (x - np.median(x)) / (1.253314 * deviation.mean())
+        else:
+            continue
+        for source, value, zi in zip(sources, x, z, strict=True):
+            if abs(zi) > OUTLIER_Z:
+                found.append(
+                    {
+                        "source": source,
+                        "metric": column,
+                        "value": float(value),
+                        "z": round(float(zi), 2),
+                    }
+                )
+    return found
 
 
 def _scalars(metrics: dict[str, Any], prefix: str, max_keys: int = 10) -> dict[str, float]:

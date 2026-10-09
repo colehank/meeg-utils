@@ -8,6 +8,10 @@ Examples
     meu qc sub-01_task-rest_eeg.vhdr --out qc/       # one recording, with an HTML report
     meu run --preset had-meeg --datatype eeg --sources /data/bids --out /data/bids/derivatives/meu -j 8
     meu run pipeline.yaml --sources rec1_raw.fif rec2_raw.fif --out derivatives/
+    meu preset                                        # list the presets
+    meu preset meg-erp --option system=ctf -o pipeline.yaml
+    meu report derivatives/sub-01/eeg/sub-01_task-rest_desc-preproc_eeg.fif
+    meu report derivatives/ --desc preproc            # summary of every run
 """
 
 from __future__ import annotations
@@ -114,6 +118,35 @@ def _parser() -> argparse.ArgumentParser:
     existing.add_argument("--skip-existing", action="store_true", help="skip finished recordings")
     existing.add_argument("--overwrite", action="store_true", help="replace existing outputs")
     run.set_defaults(func=_run)
+
+    preset = sub.add_parser(
+        "preset",
+        parents=[common],
+        help="list the presets, or write one as a pipeline configuration",
+        description="Without a name, list the presets and their options. With a name, write "
+        "the preset as YAML (to edit, then use with 'meu run CONFIG').",
+    )
+    preset.add_argument("name", nargs="?", help="preset name")
+    preset.add_argument(
+        "--option", action="append", default=[], metavar="KEY=VALUE",
+        help="preset option, repeatable; values are YAML (e.g. system=neuromag, stage=epochs)",
+    )  # fmt: skip
+    preset.add_argument("--datatype", choices=("meg", "eeg"), help="datatype, for had-meeg")
+    preset.add_argument("-o", "--out", type=Path, help="output file (default: print)")
+    preset.set_defaults(func=_preset)
+
+    report = sub.add_parser(
+        "report",
+        parents=[common],
+        help="HTML report of a saved derivative, or summary of a derivatives folder",
+        description="For a derivative file (.fif written by meu run): its pipeline, QC metrics, "
+        "provenance and data. For a folder: the QC metrics of every derivative in a table "
+        "(CSV) and a report with outlying files and the distribution of each metric.",
+    )
+    report.add_argument("path", type=Path, help="derivative .fif file, or derivatives folder")
+    report.add_argument("--out", type=Path, help="output file (file) or directory (folder)")
+    report.add_argument("--desc", help="folder: only derivatives with this desc (e.g. preproc)")
+    report.set_defaults(func=_report)
     return parser
 
 
@@ -196,6 +229,61 @@ def _run(args: argparse.Namespace) -> int:
     n_failed = sum(r["status"] == "failed" for r in records)
     print(f"\n{len(records) - n_failed}/{len(records)} recordings done, {n_failed} failed.")
     return 1 if n_failed else 0
+
+
+def _preset(args: argparse.Namespace) -> int:
+    import yaml
+
+    from . import presets
+    from .core import Pipeline
+
+    if args.name is None:
+        for name, summary in presets.available().items():
+            print(f"{name:<10} {summary}\n{'':<10} options: {', '.join(presets.options(name))}")
+        return 0
+    if args.name not in presets.available():
+        raise SystemExit(f"Unknown preset {args.name!r}; available: {sorted(presets.available())}")
+    args.preset = args.name
+    options = _preset_options(args, [])
+    if "system" in presets.options(args.name) and "system" not in options:
+        stage = options.get("stage", "preprocessing")
+        if stage == "preprocessing":
+            raise SystemExit(
+                f"meu preset {args.name}: give --option system=... (neuromag, ctf, kit)."
+            )
+    text = yaml.safe_dump(
+        Pipeline.preset(args.name, **options).to_dict(), sort_keys=False, allow_unicode=True
+    )
+    if args.out is None:
+        print(text, end="")
+    else:
+        args.out.write_text(text, encoding="utf-8")
+        print(f"Wrote {args.out}")
+    return 0
+
+
+def _report(args: argparse.Namespace) -> int:
+    from . import report
+
+    path: Path = args.path
+    if path.is_dir():
+        out = args.out or path
+        out.mkdir(parents=True, exist_ok=True)
+        summary = report.summarize(path, desc=args.desc)
+        csv_path = summary.to_csv(out / "derivatives_summary.csv")
+        html_path = out / "derivatives_summary.html"
+        summary.report().save(html_path, open_browser=False, overwrite=True, verbose=False)
+        for o in summary.outliers:
+            print(f"outlier: {o['source']}: {o['metric']} = {o['value']:g} (z = {o['z']:g})")
+        print(f"{len(summary.table)} derivatives; {len(summary.outliers)} outlying values.")
+        print(f"Wrote {csv_path} and {html_path}")
+        return 0
+    if not path.exists():
+        raise SystemExit(f"{path} does not exist.")
+    out = args.out or path.with_suffix(".html")
+    report.from_derivative(path).save(out, open_browser=False, overwrite=True, verbose=False)
+    print(f"Wrote {out}")
+    return 0
 
 
 def _run_dataset(args: argparse.Namespace, pipeline: Any, options: dict[str, Any]) -> int:

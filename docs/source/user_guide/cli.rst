@@ -51,3 +51,33 @@ recording is processed separately (:func:`meeg_utils.process`); the exit
 status is 1 if any recording failed.
 
 ``-v`` shows debug messages, ``-q`` only warnings and errors.
+
+Presets
+-------
+
+.. code-block:: bash
+
+   meu preset                                         # names, summaries, options
+   meu preset meg-erp --option system=ctf -o pipeline.yaml
+   meu run pipeline.yaml --sources /data/bids --datatype meg --out derivatives/
+
+``meu preset NAME`` writes the preset as a pipeline configuration (to the
+screen, or to ``-o FILE``) so it can be edited before ``meu run``.
+
+Reports of saved results
+------------------------
+
+.. code-block:: bash
+
+   meu report derivatives/sub-01/meg/sub-01_task-faces_run-01_desc-preproc_meg.fif
+   meu report derivatives/ --desc preproc
+
+For one derivative, ``meu report`` writes an HTML report next to it: the
+pipeline and its parameters, every step's QC metrics and warnings, the
+provenance and views of the data (the fitted steps are not saved, so their
+own figures are only in reports built right after processing, see
+:func:`meeg_utils.report.build`). For a folder, it collects the QC metrics
+of every derivative into ``derivatives_summary.csv`` and
+``derivatives_summary.html``, flagging runs whose value of a metric is an
+outlier (modified z > 3.5), e.g. a run with many more bad channels or
+rejected epochs than the others.

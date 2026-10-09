@@ -88,6 +88,9 @@ Quality control (``meeg_utils.qc``)
    qc.BidsMetadata
    qc.Photodiode
    report.build
+   report.from_derivative
+   report.summarize
+   report.DerivativesSummary
 
 Presets (``meeg_utils.presets``)
 --------------------------------
