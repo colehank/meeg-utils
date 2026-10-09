@@ -260,24 +260,27 @@ check.plot()                         # QC 检查项同样如此
 
 回答"这份数据采得好不好、要给采集者什么反馈"，**不修改数据**，所以不是 Step。每个检查项是一个小类：参数在 `__init__` 中声明，默认阈值注明出处，声明适用的系统和模态，`compute(raw)` 后得到指标、判定（`ok` / `warn` / `fail`）和依据，并可 `plot()`。
 
-| 模态 | 检查项（第一批加粗） | 主要依据 / 函数 |
-|---|---|---|
-| EEG | **电极桥接** | `mne.preprocessing.compute_bridged_electrodes`，图：`mne.viz.plot_bridged_electrodes` |
-| EEG | 阻抗 | 读取采集软件或 BIDS 记录的阻抗 |
-| EEG/MEG | **平坦、削顶、饱和** | `annotate_amplitude`，加上检测"信号长时间停在最大值" |
-| EEG/MEG | 肌电时间占比 | `annotate_muscle_zscore` |
-| EEG | 眨眼率、EOG 质量 | EOG 通道 |
-| MEG | **头动** | Neuromag：`compute_chpi_amplitudes` + `compute_head_pos`；CTF：`extract_chpi_locs_ctf`；KIT：`extract_chpi_locs_kit`；图：`plot_head_positions` |
-| MEG | 头与传感器的距离 | `dev_head_t` |
-| MEG | 坏传感器、SQUID 跳变 | Maxwell 评分、跳变检测 |
-| MEG | 环境噪声 | 与当天空房间记录（mne-bids `find_empty_room`）比较 PSD |
-| 通用 | **工频及谐波、其他窄带峰** | 未清理数据的 PSD |
-| 通用 | **事件与触发** | 事件数与预期是否一致、触发与光电二极管之间的抖动 |
-| 通用 | 采集中断、采集参数 | `BAD_ACQ_SKIP` 标注；采样率、在线滤波、时长与 BIDS 描述是否一致 |
+**第一批（已实现，`meu.qc`）**：每项都是对 MNE 函数的薄封装，加上注明出处的阈值和出图。
+
+| 检查项 | 模态 | 基于 | 判定（默认） | 图 |
+|---|---|---|---|---|
+| `Amplitude` 平坦/削顶/缺失 | EEG/MEG | 连续相同样本、停在极值的平台、NaN（`annotate_nan` 同义） | 平坦超过 5% 时间的通道（`annotate_amplitude` 默认）、任何削顶、任何 NaN → warn | 每通道百分比 |
+| `Bridging` 电极桥接 | EEG | `compute_bridged_electrodes`（MNE 默认参数） | 任何桥接 → warn；桥接组大于 4 个电极（`interpolate_bridged_electrodes` 的上限）→ fail | `plot_bridged_electrodes`、电距离分布 |
+| `Impedance` 阻抗 | EEG | BrainVision 头文件（`raw.impedances`）或传入的值（如 `read_impedances_curry`） | > 25 kΩ（Brain Products 有源电极的建议上限；无源电极应改为 5–10）→ warn | 每电极阻抗 |
+| `OutlierChannels` 离群通道 | EEG/MEG | `find_bad_channels_lof`（Kumaravel et al. 2022） | LOF > 1.5（MNE 默认）→ warn | 每通道 LOF 分数 |
+| `NarrowbandNoise` 工频与窄带峰 | EEG/MEG | ZapLine-plus 的峰检测（mne-denoise `find_noise_freqs`，高出局部基线 4 dB） | 非工频的窄带峰 → warn；工频幅度稳健 z > 5（PREP 噪声判据阈值）的通道 → warn；工频本身只报告 | 频谱、每通道工频强度 |
+| `Muscle` 肌电 | EEG/MEG | `annotate_muscle_zscore`（110–140 Hz，z > 4） | 肌电时间 > 10%（无公认标准）→ warn | z 分数时程 |
+| `Blinks` 眨眼率 | EOG | `find_eog_events` | < 2 次/分钟（静息约 17、阅读约 4.5 次/分钟，Bentivoglio 1997）→ warn，提示 EOG 电极 | 眨眼率时程、平均眨眼 |
+| `HeartRate` 心率 | ECG（或 MEG 合成） | `find_ecg_events` | 超出 40–120 bpm → warn，提示 ECG 检测失败 | 心率时程、平均心搏 |
+| `HeadMovement` 头动与 HPI 线圈 | MEG（Neuromag、CTF 或提供 `.pos`） | `compute_chpi_amplitudes` → `compute_chpi_locs` → `compute_head_pos`；`extract_chpi_locs_ctf` | 相对 `dev_head_t` 位移 > 5 mm（常用惯例）→ warn；某线圈好拟合（gof ≥ 0.98）比例 < 90% → warn | `plot_head_positions`、位移时程 |
+| `Digitization` 数字化与头-传感器距离 | EEG/MEG | `fit_sphere_to_headshape`、`dev_head_t` | 无位置的 EEG 通道 → warn；球拟合半径超出 50–108.5 mm 或中心 x/y 偏离 > 20 mm（MNE 的合理范围）→ warn；`dev_head_t` 缺失或为单位矩阵 → fail；头-传感器距离只报告 | 三视图数字化点、拟合球、传感器 |
+| `Events` 事件 | 通用 | 标注或刺激通道（`find_events`） | 与 `expected` 计数不符 → fail；同一样本上的多个事件 → warn；间隔小于 `min_interval` → warn | `plot_events` |
+
+**第二批（P2）**：与当天空房间记录比较（`maxwell_filter_prepare_emptyroom` + PSD）、fine calibration（`compute_fine_calibration`）、设备间时钟漂移（`realign_raw`）、3D 配准（`plot_alignment`）、cHPI 信噪比（`compute_chpi_snr` / `plot_chpi_snr`）、SQUID 跳变、光电二极管延迟与抖动、采集参数与 BIDS 描述是否一致。
 
 ```python
-report = meu.qc.inspect(raw)          # 按系统和模态自动选择适用的检查
-report.flags; report.to_frame(); report.plot()
+report = meu.qc.inspect(raw)          # 按系统和模态自动选择适用的检查，其余列在 report.skipped
+report.flags; report.to_records(); report.to_dict(); report.plot()
 meu.qc.inspect_dataset(bids_root)     # 数据集汇总表，标出离群的被试和 run
 ```
 

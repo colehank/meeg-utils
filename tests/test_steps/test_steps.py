@@ -12,7 +12,7 @@ from meeg_utils import Pipeline, io
 from meeg_utils import steps as S
 from meeg_utils.testing import check_step
 
-from .conftest import EEG_CHANNELS, FLAT, FRONTAL, NOISY, SFREQ, make_eeg
+from ..simulation import EEG_CHANNELS, FLAT, FRONTAL, NOISY, SFREQ, make_eeg
 
 
 def _band_power(raw: BaseRaw, picks, lo: float, hi: float) -> float:

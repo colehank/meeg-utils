@@ -11,11 +11,12 @@ from sklearn.base import BaseEstimator
 from sklearn.utils.validation import check_is_fitted
 
 from ..io import detect_system
+from .plotting import PlotMixin
 
 Inst: TypeAlias = BaseRaw | BaseEpochs | Evoked
 
 
-class Step(BaseEstimator):
+class Step(PlotMixin, BaseEstimator):
     """Base class for all processing steps.
 
     A step follows scikit-learn conventions:
@@ -36,6 +37,10 @@ class Step(BaseEstimator):
     ``meas_date`` or the timing of annotations, unless they declare it with
     ``changes_channels = True`` / ``changes_times = True``.
 
+    Figures: subclasses list them in ``plot_kinds`` (kind -> whether the
+    figure needs data) and draw each with ``_plot_<kind>(inst, **kwargs)``;
+    :meth:`plot` dispatches to them.
+
     Attributes
     ----------
     system_ : str
@@ -55,9 +60,6 @@ class Step(BaseEstimator):
     changes_channels: ClassVar[bool] = False
     #: Whether the step may change the time axis (e.g. resampling, cropping).
     changes_times: ClassVar[bool] = False
-    #: Figures the step can draw once fitted: kind -> whether it needs data
-    #: (``inst``). Each kind is drawn by a ``_plot_<kind>(inst, **kwargs)`` method.
-    plot_kinds: ClassVar[dict[str, bool]] = {}
 
     def fit(self, inst: Inst, y: Any = None, *, system: str | None = None) -> Self:
         """Learn the step's state from the data.
@@ -138,55 +140,6 @@ class Step(BaseEstimator):
             The processed data.
         """
         return self.fit(inst, system=system).transform(inst, copy=copy)
-
-    def plot(
-        self, kind: str | None = None, *, inst: Inst | None = None, **kwargs: Any
-    ) -> dict[str, Any]:
-        """Draw quality-control figures of the fitted step.
-
-        Figures are returned, not shown. Most are drawn from compact
-        diagnostics stored while fitting and transforming, so they need no
-        data; kinds marked ``True`` in :attr:`plot_kinds` need ``inst``.
-
-        Parameters
-        ----------
-        kind : str | None
-            The figure to draw (see :attr:`plot_kinds`). ``None`` draws every
-            figure that the available inputs allow.
-        inst : Raw | Epochs | Evoked | None
-            Data for the figures that need it.
-        **kwargs
-            Passed to the plotting method of ``kind``; only valid with ``kind``.
-
-        Returns
-        -------
-        dict
-            Kind mapped to its :class:`matplotlib.figure.Figure`.
-        """
-        check_is_fitted(self, "system_")
-        if kind is None:
-            if kwargs:
-                raise TypeError("Plot options can only be passed together with kind.")
-            kinds = [
-                k for k, needs_data in self.plot_kinds.items() if inst is not None or not needs_data
-            ]
-        else:
-            if kind not in self.plot_kinds:
-                available = sorted(self.plot_kinds) or "none"
-                raise ValueError(
-                    f"{type(self).__name__} has no {kind!r} plot; available: {available}."
-                )
-            if self.plot_kinds[kind] and inst is None:
-                raise ValueError(f"The {kind!r} plot of {type(self).__name__} needs inst=<data>.")
-            kinds = [kind]
-
-        import matplotlib.pyplot as plt
-
-        figures: dict[str, Any] = {}
-        with plt.ioff():
-            for k in kinds:
-                figures[k] = getattr(self, f"_plot_{k}")(inst, **kwargs)
-        return figures
 
     # ------------------------------------------------------------------
     # Hooks for subclasses

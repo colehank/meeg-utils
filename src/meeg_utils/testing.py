@@ -1,10 +1,14 @@
-"""Contract checks for processing steps.
+"""Contract checks for processing steps and quality checks.
 
 Every :class:`~meeg_utils.core.Step` shipped with meeg-utils must pass
-:func:`check_step`; custom steps can use it in their own tests.
+:func:`check_step`, and every :class:`~meeg_utils.qc.Check` must pass
+:func:`check_check`; custom ones can use them in their own tests.
 """
 
 from __future__ import annotations
+
+import json
+from typing import TYPE_CHECKING
 
 import numpy as np
 from mne import Evoked
@@ -15,6 +19,9 @@ from sklearn.exceptions import NotFittedError
 
 from .core import Pipeline, Step
 from .core.step import Inst
+
+if TYPE_CHECKING:
+    from .qc import Check
 
 
 def check_step(step: Step, inst: Inst) -> None:
@@ -99,6 +106,80 @@ def check_step(step: Step, inst: Inst) -> None:
 
     # 8. Figures
     _check_plots(step, inst, name)
+
+
+def check_check(check: Check, raw: BaseRaw) -> None:
+    """Check that a quality check honours the meeg-utils check contract.
+
+    The checks are:
+
+    1. Parameters survive ``get_params`` / ``set_params`` and
+       :func:`~sklearn.base.clone`.
+    2. ``plot`` before ``compute`` raises :class:`~sklearn.exceptions.NotFittedError`.
+    3. ``compute`` returns the check itself and does not modify the data.
+    4. ``metrics_`` and the findings are JSON-serializable, every finding
+       belongs to the check and has a valid level.
+    5. Every kind in ``plot_kinds`` draws a figure.
+
+    Parameters
+    ----------
+    check : Check
+        A check that has not been computed.
+    raw : Raw
+        Preloaded data the check applies to.
+
+    Raises
+    ------
+    AssertionError
+        If a check fails.
+    """
+    from .qc import LEVELS
+
+    name = type(check).__name__
+    params = check.get_params(deep=False)
+    _assert_params_equal(clone(check).get_params(deep=False), params, f"{name}: clone")
+    check.set_params(**params)
+    _assert_params_equal(check.get_params(deep=False), params, f"{name}: set_params")
+    assert check.name, f"{name}: name must be set"
+
+    try:
+        clone(check).plot()
+    except NotFittedError:
+        pass
+    else:
+        raise AssertionError(f"{name}: plot before compute must raise NotFittedError")
+
+    before = _snapshot(raw)
+    assert check.compute(raw) is check, f"{name}: compute must return self"
+    _assert_unchanged(raw, before, f"{name}: compute modified its input")
+
+    try:
+        json.dumps(check.metrics_, allow_nan=True)
+        json.dumps([f.to_dict() for f in check.findings_], allow_nan=True, default=str)
+    except TypeError as exc:
+        raise AssertionError(
+            f"{name}: metrics_ / findings_ are not JSON-serializable: {exc}"
+        ) from exc
+    for finding in check.findings_:
+        assert finding.check == check.name, f"{name}: finding {finding} names another check"
+        assert finding.level in LEVELS, f"{name}: invalid level {finding.level!r}"
+    assert check.level in LEVELS
+
+    import matplotlib.pyplot as plt
+    from matplotlib.figure import Figure
+
+    try:
+        drawn = check.plot(inst=raw)
+        assert set(drawn) == set(check.plot_kinds), (
+            f"{name}: plot drew {sorted(drawn)}, expected {sorted(check.plot_kinds)}"
+        )
+        for kind, figure in drawn.items():
+            figs = figure if isinstance(figure, list) else [figure]
+            assert figs and all(isinstance(f, Figure) for f in figs), (
+                f"{name}: plot {kind!r} did not return matplotlib figures"
+            )
+    finally:
+        plt.close("all")
 
 
 def _check_plots(step: Step, inst: Inst, name: str) -> None:

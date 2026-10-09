@@ -10,7 +10,7 @@ import meeg_utils as meu
 from meeg_utils import Pipeline
 from meeg_utils import steps as S
 
-from .conftest import FLAT, NOISY
+from ..simulation import FLAT, NOISY
 
 
 def test_available_lists_presets():
