@@ -89,6 +89,7 @@ Presets (``meeg_utils.presets``)
 
    presets.available
    presets.get
+   presets.options
 
 Logging and testing
 -------------------

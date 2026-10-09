@@ -26,6 +26,9 @@ Added
   z-scoring on short baselines), ``steps.DropChannels``,
   ``steps.AutoReject`` (autoreject), ``steps.FixedLengthEpochs`` and
   ``meu.epochs.combine`` for runs.
+* Recommended presets ``eeg-erp``, ``eeg-rest``, ``meg-erp`` and
+  ``meg-rest`` (``stage="preprocessing"`` / ``"epochs"``; MEG by system),
+  with the source of every parameter in ``docs/presets/recommended.md``.
 * ``Pipeline.preset("had-meeg", stage="epochs")``: the corrected HAD-MEEG
   epoching stage.
 * ``steps.Maxwell``: SSS / tSSS for Neuromag data with cross-talk and

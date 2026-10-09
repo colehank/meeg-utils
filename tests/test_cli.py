@@ -122,3 +122,42 @@ class TestRun:
     def test_config_or_preset(self, recording, tmp_path):
         with pytest.raises(SystemExit, match="either a configuration file or --preset"):
             main(["run", "--sources", str(recording), "--out", str(tmp_path)])
+
+
+class TestPresetOptions:
+    def test_epochs_stage(self, tmp_path):
+        from .simulation import make_erp
+
+        fname = tmp_path / "raw" / "erp_raw.fif"
+        fname.parent.mkdir()
+        make_erp().save(fname, verbose=False)
+        out = tmp_path / "deriv"
+        args = ["run", "--preset", "eeg-rest", "--option", "stage=epochs",
+                "--option", "epoch_duration=2", "--sources", str(fname), "--out", str(out),
+                "--desc", "epochs", "-q"]  # fmt: skip
+        assert main(args) == 0
+        saved = list(out.glob("*epo.fif"))
+        assert len(saved) == 1
+        assert mne.read_epochs(saved[0], verbose=False).times[-1] == pytest.approx(2.0, abs=0.01)
+
+    def test_invalid_option(self, recording, tmp_path):
+        with pytest.raises(SystemExit, match="invalid --option"):
+            main(["run", "--preset", "eeg-erp", "--option", "colour=red",
+                  "--sources", str(recording), "--out", str(tmp_path)])  # fmt: skip
+
+    def test_option_needs_preset(self, recording, tmp_path):
+        config = tmp_path / "pipeline.yaml"
+        meu.Pipeline([("filter", S.Filter(1.0, 40.0))]).to_yaml(config)
+        with pytest.raises(SystemExit, match="only applies to --preset"):
+            main(["run", str(config), "--option", "stage=epochs",
+                  "--sources", str(recording), "--out", str(tmp_path)])  # fmt: skip
+
+    def test_meg_system_detected(self, neuromag_fname):
+        import argparse
+
+        from meeg_utils.cli import _preset_options
+
+        args = argparse.Namespace(preset="meg-erp", option=[], datatype=None)
+        assert _preset_options(args, [neuromag_fname])["system"] == "neuromag"
+        args.option = ["system=ctf"]
+        assert _preset_options(args, [neuromag_fname])["system"] == "ctf"

@@ -91,6 +91,14 @@ def _parser() -> argparse.ArgumentParser:
     run.add_argument("config", nargs="?", type=Path, help="pipeline YAML (Pipeline.to_yaml)")
     run.add_argument("--preset", help="use a preset instead of a configuration file")
     run.add_argument("--datatype", choices=("meg", "eeg"), help="datatype for the preset / BIDS")
+    run.add_argument(
+        "--option",
+        action="append",
+        default=[],
+        metavar="KEY=VALUE",
+        help="preset option, repeatable; values are YAML, e.g. stage=epochs, "
+        "event_id=[target,standard], epoch_duration=2 (MEG system: detected if not given)",
+    )
     run.add_argument("--sources", nargs="+", required=True, help="recordings or a BIDS root")
     run.add_argument("--out", type=Path, required=True, help="derivatives root")
     run.add_argument("--desc", default="preproc", help="BIDS desc entity of the outputs")
@@ -150,12 +158,13 @@ def _run(args: argparse.Namespace) -> int:
 
     if (args.config is None) == (args.preset is None):
         raise SystemExit("meu run: give either a configuration file or --preset, not both.")
-    if args.preset is not None:
-        options = {"datatype": args.datatype} if args.datatype else {}
-        pipeline = Pipeline.preset(args.preset, **options)
-    else:
-        pipeline = Pipeline.from_yaml(args.config)
     sources = _expand(args.sources, datatype=args.datatype)
+    if args.preset is not None:
+        pipeline = Pipeline.preset(args.preset, **_preset_options(args, sources))
+    else:
+        if args.option:
+            raise SystemExit("meu run: --option only applies to --preset.")
+        pipeline = Pipeline.from_yaml(args.config)
     records = process(
         pipeline,
         sources,
@@ -176,6 +185,30 @@ def _run(args: argparse.Namespace) -> int:
 
 
 # ----------------------------------------------------------------------
+
+
+def _preset_options(args: argparse.Namespace, sources: list[Any]) -> dict[str, Any]:
+    """Preset options from --option and --datatype; the MEG system from the first recording."""
+    import yaml
+
+    from . import presets
+
+    accepted = presets.options(args.preset)
+    options: dict[str, Any] = {}
+    for item in args.option:
+        key, sep, value = item.partition("=")
+        if not sep or key not in accepted:
+            raise SystemExit(
+                f"meu run: invalid --option {item!r}; {args.preset} accepts {accepted} as KEY=VALUE."
+            )
+        options[key] = yaml.safe_load(value)
+    if args.datatype and "datatype" in accepted:
+        options.setdefault("datatype", args.datatype)
+    if "system" in accepted and "system" not in options and sources:
+        from .io import detect_system, read
+
+        options["system"] = detect_system(read(sources[0], preload=False))
+    return options
 
 
 def _select_checks(names: str | None) -> list[Any] | None:
