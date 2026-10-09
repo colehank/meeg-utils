@@ -7,6 +7,7 @@ multiple datasets in parallel.
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any, Literal
 
 from joblib import Parallel, delayed  # type: ignore[import-untyped]
 from loguru import logger
@@ -91,16 +92,20 @@ class BatchPreprocessingPipeline:
         ica_params: dict | None,
         save_intermediate: bool,
         skip_existing: bool,
-    ) -> None:
+    ) -> dict[str, Any]:
         """Process a single dataset.
 
-        This method is called in parallel for each dataset.
+        This method is called in parallel for each dataset. It never raises;
+        failures are reported in the returned record.
         """
+        record: dict[str, Any] = {"input": str(input_path), "status": "ok", "error": None}
+
         # Check if output already exists
         if skip_existing:
             if self._check_output_exists(input_path):
                 logger.info(f"Skipping {input_path} (output already exists)")
-                return
+                record["status"] = "skipped"
+                return record
 
         try:
             # Create pipeline for this dataset
@@ -128,7 +133,11 @@ class BatchPreprocessingPipeline:
             logger.success(f"Completed: {input_path}")
 
         except Exception as e:
-            logger.error(f"Error processing {input_path}: {e}")
+            logger.exception(f"Error processing {input_path}: {e}")
+            record["status"] = "failed"
+            record["error"] = f"{type(e).__name__}: {e}"
+
+        return record
 
     def _check_output_exists(self, input_path: Path | BIDSPath) -> bool:
         """Check if output file already exists."""
@@ -140,7 +149,7 @@ class BatchPreprocessingPipeline:
             subject = input_path.subject
             session = input_path.session
             datatype = input_path.datatype
-            basename = input_path.basename
+            basename = input_path.basename.split(".")[0]  # same naming as save()
             output_path = (
                 self.output_dir
                 / f"sub-{subject}"
@@ -150,9 +159,9 @@ class BatchPreprocessingPipeline:
             )
         else:
             # For non-BIDS paths, check in output_dir
-            output_path = self.output_dir / f"{input_path.stem}_preproc_*.fif"
+            return any(self.output_dir.glob(f"{input_path.stem}_preproc_*.fif"))
 
-        return output_path.exists() if isinstance(output_path, Path) else False
+        return bool(output_path.exists())
 
     def run(
         self,
@@ -164,8 +173,9 @@ class BatchPreprocessingPipeline:
         save_intermediate: bool = False,
         skip_existing: bool = False,
         save_logs: bool = True,
-        logging_level: str = "INFO",
-    ) -> None:
+        logging_level: str = "DEBUG",
+        on_error: Literal["raise", "warn"] = "raise",
+    ) -> list[dict[str, Any]]:
         """Run batch preprocessing on all datasets.
 
         Parameters
@@ -185,60 +195,72 @@ class BatchPreprocessingPipeline:
         skip_existing : bool, optional
             Whether to skip datasets with existing output. Default is False.
         save_logs : bool, optional
-            Whether to save log files. Default is True.
+            Whether to write a log file to ``<output_dir>/logs`` for this run.
+            Default is True. Console output is controlled separately with
+            :func:`meeg_utils.setup_logging`.
         logging_level : str, optional
-            Logging level for the batch process. Default is "INFO".
+            Minimum level written to the log file. Default is "DEBUG".
+        on_error : {"raise", "warn"}, optional
+            What to do when datasets fail. All datasets are processed either
+            way; with ``"raise"`` (default) a ``RuntimeError`` listing the
+            failures is raised at the end, with ``"warn"`` the failures are
+            only logged and reported in the returned records.
+
+        Returns
+        -------
+        list of dict
+            One record per dataset with keys ``"input"``, ``"status"``
+            (``"ok"``, ``"skipped"`` or ``"failed"``) and ``"error"``.
+
+        Raises
+        ------
+        RuntimeError
+            If any dataset failed and ``on_error="raise"``.
         """
-        # Setup logging if requested
+        if on_error not in ("raise", "warn"):
+            raise ValueError(f"on_error must be 'raise' or 'warn', got {on_error!r}.")
+
+        kwargs: dict[str, Any] = dict(
+            filter_params=filter_params,
+            detect_bad_channels=detect_bad_channels,
+            remove_line_noise=remove_line_noise,
+            apply_ica=apply_ica,
+            ica_params=ica_params,
+            save_intermediate=save_intermediate,
+            skip_existing=skip_existing,
+        )
         if save_logs and self.output_dir:
             from datetime import datetime
 
-            from ..logger import setup_logging
+            from ..logger import log_to_file
 
-            # Create log directory in output
-            log_dir = self.output_dir / "logs"
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_filename = f"batch_preprocessing_{timestamp}.log"
+            stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            log_file = self.output_dir / "logs" / f"batch_preprocessing_{stamp}.log"
+            with log_to_file(log_file, level=logging_level):
+                records = self._run_all(**kwargs)
+        else:
+            records = self._run_all(**kwargs)
 
-            setup_logging(
-                stdout_level=logging_level,
-                file_level="DEBUG",
-                enable_file_logging=True,
-                log_filename=log_filename,
-                log_dir=log_dir,
-            )
+        failed = [r for r in records if r["status"] == "failed"]
+        if failed:
+            summary = "\n".join(f"  {r['input']}: {r['error']}" for r in failed)
+            message = f"{len(failed)} of {len(records)} datasets failed:\n{summary}"
+            if on_error == "raise":
+                raise RuntimeError(message)
+            logger.warning(message)
+        return records
 
+    def _run_all(self, **kwargs: Any) -> list[dict[str, Any]]:
         logger.info(f"Starting batch preprocessing of {len(self.input_paths)} datasets...")
 
         if self.n_jobs == 1:
-            # Sequential processing
-            for input_path in self.input_paths:
-                self._process_single(
-                    input_path=input_path,
-                    filter_params=filter_params,
-                    detect_bad_channels=detect_bad_channels,
-                    remove_line_noise=remove_line_noise,
-                    apply_ica=apply_ica,
-                    ica_params=ica_params,
-                    save_intermediate=save_intermediate,
-                    skip_existing=skip_existing,
-                )
+            records = [self._process_single(input_path=p, **kwargs) for p in self.input_paths]
         else:
-            # Parallel processing
             logger.info(f"Processing in parallel with {self.n_jobs} jobs...")
-
-            Parallel(n_jobs=self.n_jobs)(
-                delayed(self._process_single)(
-                    input_path=input_path,
-                    filter_params=filter_params,
-                    detect_bad_channels=detect_bad_channels,
-                    remove_line_noise=remove_line_noise,
-                    apply_ica=apply_ica,
-                    ica_params=ica_params,
-                    save_intermediate=save_intermediate,
-                    skip_existing=skip_existing,
-                )
-                for input_path in self.input_paths
+            records = Parallel(n_jobs=self.n_jobs)(
+                delayed(self._process_single)(input_path=p, **kwargs) for p in self.input_paths
             )
 
-        logger.success(f"Batch preprocessing completed for {len(self.input_paths)} datasets!")
+        n_ok = sum(r["status"] == "ok" for r in records)
+        logger.info(f"Batch preprocessing finished: {n_ok}/{len(records)} datasets processed.")
+        return list(records)

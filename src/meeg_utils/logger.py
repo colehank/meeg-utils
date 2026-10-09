@@ -1,132 +1,140 @@
-# logger.py
-"""Unified logging configuration for meeg-utils.
+"""Logging for meeg-utils.
 
-This module provides centralized logging configuration using loguru.
-All logs are written to the .log directory in the project root.
+meeg-utils logs through `loguru <https://loguru.readthedocs.io>`_ but, like any
+library, configures nothing on import: its messages are disabled until you
+opt in, and it never adds, removes or changes handlers you did not ask for.
+
+Turn logging on with :func:`setup_logging`, or, if you configure loguru
+yourself, with ``logger.enable("meeg_utils")``.
 """
 
 from __future__ import annotations
 
 import sys
-from datetime import datetime
+from collections.abc import Iterator
+from contextlib import contextmanager
 from pathlib import Path
 
 from loguru import logger
 
-# Determine project root and log directory
-# When imported as a package, this will be relative to the package location
-_MODULE_DIR = Path(__file__).parent
-_PROJECT_ROOT = _MODULE_DIR.parent.parent  # Go up to project root
-LOG_DIR = _PROJECT_ROOT / ".log"
+logger.disable("meeg_utils")
 
-# Global flag to track if logging has been initialized
-_LOGGING_INITIALIZED = False
+# Handler ids added by setup_logging, so that it only ever removes its own.
+_HANDLER_IDS: list[int] = []
+
+_CONSOLE_FORMAT = (
+    "<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | "
+    "<cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>"
+)
+_FILE_FORMAT = "{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}"
 
 
 def setup_logging(
-    stdout_level: str = "INFO",
+    level: str | None = "INFO",
+    log_file: str | Path | None = None,
     file_level: str = "DEBUG",
-    enable_file_logging: bool = True,
-    log_filename: str | None = None,
-    log_dir: Path | None = None,
+    *,
+    enqueue: bool = False,
 ) -> None:
-    """Setup unified logging configuration for the entire project.
+    """Show meeg-utils log messages on the console and/or in a file.
 
-    This function configures loguru to:
-    1. Output to stdout with the specified level
-    2. Write to a log file in the .log directory (if enabled)
+    Calling it again replaces the handlers added by the previous call.
+    Handlers you added yourself are left alone; loguru's built-in default
+    stderr handler is removed so that messages are not printed twice.
 
     Parameters
     ----------
-    stdout_level : str, optional
-        Logging level for stdout output. Default is "INFO".
-        Options: "TRACE", "DEBUG", "INFO", "SUCCESS", "WARNING", "ERROR", "CRITICAL"
-    file_level : str, optional
-        Logging level for file output. Default is "DEBUG".
-    enable_file_logging : bool, optional
-        Whether to enable file logging. Default is True.
-    log_filename : str | None, optional
-        Custom log filename. If None, uses timestamp-based filename.
-    log_dir : Path | None, optional
-        Custom log directory. If None, uses default .log directory.
+    level : str | None
+        Minimum level shown on the console (stderr), e.g. ``"DEBUG"``,
+        ``"INFO"`` or ``"WARNING"``. ``None`` disables console output.
+    log_file : str | Path | None
+        File to write log messages to; parent directories are created.
+        ``None`` (default) disables file logging.
+    file_level : str
+        Minimum level written to ``log_file``.
+    enqueue : bool
+        Pass messages through a multiprocessing-safe queue. Use it when
+        several processes write to the same file.
 
     Examples
     --------
-    >>> from meeg_utils.logger import setup_logging
-    >>> setup_logging(stdout_level="INFO", file_level="DEBUG")
+    >>> import meeg_utils as meu
+    >>> meu.setup_logging("INFO", log_file="logs/preproc.log")  # doctest: +SKIP
     """
-    global _LOGGING_INITIALIZED  # noqa: PLW0603
+    teardown_logging()
+    try:
+        logger.remove(0)  # loguru's default stderr handler, if still present
+    except ValueError:
+        pass
+    logger.enable("meeg_utils")
 
-    # Remove all existing handlers
-    logger.remove()
-
-    # Add stdout handler with formatting
-    logger.add(
-        sys.stdout,
-        level=stdout_level,
-        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <cyan>{name}</cyan>:<cyan>{function}</cyan>:<cyan>{line}</cyan> - <level>{message}</level>",
-        colorize=True,
-        enqueue=True,
-    )
-
-    # Add file handler if enabled
-    if enable_file_logging:
-        # Determine log directory
-        target_log_dir = log_dir if log_dir is not None else LOG_DIR
-        target_log_dir.mkdir(parents=True, exist_ok=True)
-
-        # Determine log filename
-        if log_filename is None:
-            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-            log_filename = f"meeg_utils_{timestamp}.log"
-        elif not log_filename.endswith(".log"):
-            log_filename = f"{log_filename}.log"
-
-        log_path = target_log_dir / log_filename
-
-        logger.add(
-            log_path,
-            level=file_level,
-            format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {name}:{function}:{line} - {message}",
-            rotation="50 MB",
-            retention="30 days",
-            compression="zip",
-            enqueue=True,
-            backtrace=True,
-            diagnose=True,
+    if level is not None:
+        _HANDLER_IDS.append(
+            logger.add(
+                sys.stderr,
+                level=level,
+                format=_CONSOLE_FORMAT,
+                filter="meeg_utils",
+                enqueue=enqueue,
+            )
         )
 
-        logger.debug(f"File logging enabled: {log_path}")
+    if log_file is not None:
+        log_file = Path(log_file)
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        _HANDLER_IDS.append(
+            logger.add(
+                log_file,
+                level=file_level,
+                format=_FILE_FORMAT,
+                filter="meeg_utils",
+                enqueue=enqueue,
+                backtrace=True,
+                diagnose=False,  # do not dump local variables (may hold data) into files
+            )
+        )
 
-    _LOGGING_INITIALIZED = True
-    logger.info(
-        f"Logging initialized (stdout: {stdout_level}, file: {file_level if enable_file_logging else 'disabled'})"
-    )
+
+def teardown_logging() -> None:
+    """Remove the handlers added by :func:`setup_logging` and silence meeg-utils again."""
+    while _HANDLER_IDS:
+        handler_id = _HANDLER_IDS.pop()
+        try:
+            logger.remove(handler_id)
+        except ValueError:  # already removed by the user
+            pass
+    logger.disable("meeg_utils")
 
 
-def get_logger():
-    """Get the configured logger instance.
+@contextmanager
+def log_to_file(log_file: str | Path, level: str = "DEBUG") -> Iterator[Path]:
+    """Write meeg-utils log messages to a file for the duration of a ``with`` block.
 
-    If logging hasn't been initialized, this will call setup_logging()
-    with default parameters.
+    Afterwards the file handler is removed and, unless :func:`setup_logging`
+    is active, meeg-utils is silenced again.
 
-    Returns
-    -------
-    logger
-        The loguru logger instance.
+    Parameters
+    ----------
+    log_file : str | Path
+        File to write to; parent directories are created.
+    level : str
+        Minimum level written to the file.
+
+    Yields
+    ------
+    Path
+        The log file.
     """
-    global _LOGGING_INITIALIZED  # noqa: PLW0602
-
-    if not _LOGGING_INITIALIZED:
-        setup_logging()
-
-    return logger
-
-
-# Initialize logging with default settings when module is imported
-# This ensures consistent logging behavior across the entire project
-setup_logging(
-    stdout_level="INFO",
-    file_level="DEBUG",
-    enable_file_logging=True,
-)
+    log_file = Path(log_file)
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    configured = bool(_HANDLER_IDS)
+    logger.enable("meeg_utils")
+    handler_id = logger.add(
+        log_file, level=level, format=_FILE_FORMAT, filter="meeg_utils", enqueue=True
+    )
+    try:
+        yield log_file
+    finally:
+        logger.remove(handler_id)
+        if not configured:
+            logger.disable("meeg_utils")

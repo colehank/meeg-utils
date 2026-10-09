@@ -4,12 +4,16 @@ This package provides utilities for processing MEG and EEG data,
 including preprocessing, epoching, and feature extraction.
 """
 
-__version__ = "0.1.0"
+from importlib.metadata import PackageNotFoundError, version
 
-# Initialize logging system when package is imported
+try:
+    __version__ = version("meeg-utils")
+except PackageNotFoundError:  # pragma: no cover - running from a source tree
+    __version__ = "0.0.0"
+
 from . import io
 from .core import Pipeline, Step
-from .logger import logger, setup_logging
+from .logger import log_to_file, logger, setup_logging, teardown_logging
 from .preprocessing import BatchPreprocessingPipeline, PreprocessingPipeline
 
 __all__ = [
@@ -18,6 +22,8 @@ __all__ = [
     "PreprocessingPipeline",
     "Step",
     "io",
+    "log_to_file",
     "logger",
     "setup_logging",
+    "teardown_logging",
 ]

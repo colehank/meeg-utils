@@ -101,23 +101,31 @@ This skips files that have already been processed, allowing you to:
 Logging
 -------
 
-Enable logging to file:
+meeg-utils is silent by default. Show its messages on the console (and
+optionally in a file) with :func:`meeg_utils.setup_logging`:
 
 .. code-block:: python
 
-   batch.run(
-       save_logs=True,
-       logging_level="INFO"  # or "DEBUG", "WARNING", "ERROR"
-   )
+   import meeg_utils as meu
 
-This creates a log file: ``output_dir/batch_preprocessing.log``
+   meu.setup_logging("INFO", log_file="logs/preproc.log")
 
-Control logging verbosity:
+``batch.run(save_logs=True)`` additionally writes a log file for that run only,
+``output_dir/logs/batch_preprocessing_<timestamp>.log``; ``logging_level`` sets
+the minimum level written to it (default ``"DEBUG"``).
 
-* ``"DEBUG"``: Detailed information
-* ``"INFO"``: General progress (default)
-* ``"WARNING"``: Only warnings and errors
-* ``"ERROR"``: Only errors
+Errors
+------
+
+Every dataset is processed even if some fail. By default the run then raises a
+``RuntimeError`` listing each failed dataset and its error; pass
+``on_error="warn"`` to only log the failures. Either way ``run()`` returns one
+record per dataset:
+
+.. code-block:: python
+
+   records = batch.run(on_error="warn")
+   failed = [r for r in records if r["status"] == "failed"]
 
 Input Path Types
 -----------------

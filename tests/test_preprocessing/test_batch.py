@@ -265,12 +265,16 @@ class TestBatchProcessing:
             output_dir=temp_output_dir,
         )
 
-        # Should not crash, but continue processing valid files
-        batch.run(ica_params={"n_components": 2})
-
-        # Should have processed the 3 valid files
+        # All valid files are processed, then the failure is raised loudly
+        with pytest.raises(RuntimeError, match=r"1 of 4 datasets failed:\n.*sub-99"):
+            batch.run(ica_params={"n_components": 2})
         output_files = list(temp_output_dir.glob("**/*_preproc_*.fif"))
-        assert len(output_files) >= 3
+        assert len(output_files) == 3
+
+        # With on_error="warn" the failure is reported in the records instead
+        records = batch.run(ica_params={"n_components": 2}, skip_existing=True, on_error="warn")
+        assert [r["status"] for r in records] == ["skipped"] * 3 + ["failed"]
+        assert "FileNotFoundError" in records[-1]["error"]
 
 
 class TestBatchLogging:
