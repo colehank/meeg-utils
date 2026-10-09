@@ -225,12 +225,57 @@ MNE 能读几乎所有格式，但预处理随系统不同：
   - 标为实验性的功能（如 ASR 的 riemannian 方法）不进入预设。
 - 它的 `qa`（工频压制、频谱失真）和 `overcorrection` 指标直接纳入本库的 QC。
 
-## 7. 质量检查（QC）与报告
+## 7. 质量检查（QC）、出图与报告
 
-- **原始数据 QC**（`qc.raw`）：各通道方差和平坦度、噪声通道候选、PSD、工频强度、事件和标注检查、MEG 头动、时长和采样率核对。
-- **步骤 QC**：每个 Step 拟合后在 `qc_` 中记录指标，Pipeline 汇总为 `pipe.qc_`，例如坏道数及比例、ICA 剔除的成分及其解释方差、工频衰减 dB、ASR 修复比例、epoch 拒绝率。
-- **报告**：`qc.report(pipe, inst)` 根据 `pipe.qc_` 和各步产物生成 `mne.Report`（每个被试一份 HTML）。`Dataset.qc_table()` 汇总所有被试的指标，并按阈值标出离群被试。
-- QC 可以单独运行：`qc.inspect(bids_root)`，先看数据、再定参数。
+### 7.1 统一出图接口
+
+**每个 Step、每个 QC 检查项都能出图**，接口一致：
+
+```python
+step.plot_kinds                      # {"psd": False, "properties": True, ...}；值表示是否需要传入数据
+figs = step.plot()                   # 拟合后：所有不需要数据的图 -> {kind: Figure}
+figs = step.plot(inst=raw)           # 再加上需要数据的图
+fig  = step.plot("components")["components"]
+pipe.plot(inst=raw)                  # {步骤名: {kind: Figure}}
+check.plot()                         # QC 检查项同样如此
+```
+
+- 未拟合时调用 `plot()` 抛 `NotFittedError`；需要数据却没传 `inst` 时报错并说明。
+- **画图所需的信息在拟合或变换时以紧凑形式保存**为 `_` 结尾的属性（例如 PSD 摘要、Maxwell 评分、PREP 各判据的 z 分数），不保留整份数据。所以没有原始数据也能复现大部分图。
+- **优先使用 MNE 自带的绘图函数**（如 `plot_bridged_electrodes`、`ICA.plot_components`、`plot_filter`、`plot_head_positions`），在此基础上标注阈值和判定结果。
+- 返回 matplotlib Figure，不自动显示（`show=False`），方便在 notebook、报告和批处理里统一使用。
+- 契约测试 `check_step` 也检查出图：每个 `plot_kind` 都必须产出 Figure。
+
+### 7.2 采集质量 QC（`meu.qc`）
+
+回答"这份数据采得好不好、要给采集者什么反馈"，**不修改数据**，所以不是 Step。每个检查项是一个小类：参数在 `__init__` 中声明，默认阈值注明出处，声明适用的系统和模态，`compute(raw)` 后得到指标、判定（`ok` / `warn` / `fail`）和依据，并可 `plot()`。
+
+| 模态 | 检查项（第一批加粗） | 主要依据 / 函数 |
+|---|---|---|
+| EEG | **电极桥接** | `mne.preprocessing.compute_bridged_electrodes`，图：`mne.viz.plot_bridged_electrodes` |
+| EEG | 阻抗 | 读取采集软件或 BIDS 记录的阻抗 |
+| EEG/MEG | **平坦、削顶、饱和** | `annotate_amplitude`，加上检测"信号长时间停在最大值" |
+| EEG/MEG | 肌电时间占比 | `annotate_muscle_zscore` |
+| EEG | 眨眼率、EOG 质量 | EOG 通道 |
+| MEG | **头动** | Neuromag：`compute_chpi_amplitudes` + `compute_head_pos`；CTF：`extract_chpi_locs_ctf`；KIT：`extract_chpi_locs_kit`；图：`plot_head_positions` |
+| MEG | 头与传感器的距离 | `dev_head_t` |
+| MEG | 坏传感器、SQUID 跳变 | Maxwell 评分、跳变检测 |
+| MEG | 环境噪声 | 与当天空房间记录（mne-bids `find_empty_room`）比较 PSD |
+| 通用 | **工频及谐波、其他窄带峰** | 未清理数据的 PSD |
+| 通用 | **事件与触发** | 事件数与预期是否一致、触发与光电二极管之间的抖动 |
+| 通用 | 采集中断、采集参数 | `BAD_ACQ_SKIP` 标注；采样率、在线滤波、时长与 BIDS 描述是否一致 |
+
+```python
+report = meu.qc.inspect(raw)          # 按系统和模态自动选择适用的检查
+report.flags; report.to_frame(); report.plot()
+meu.qc.inspect_dataset(bids_root)     # 数据集汇总表，标出离群的被试和 run
+```
+
+QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_bridged_electrodes`）。阈值默认取 MNE 默认值和文献标准值并注明出处；实验室自己的阈值通过参数或预设覆盖。
+
+### 7.3 报告
+
+`meu.report.build(pipe, inst=None, qc=None) -> mne.Report`：每个步骤一节，包含该步的 `qc_` 指标表和全部图；有 QC 结果时放在最前面。`meu.qc.inspect_dataset` 汇总所有被试的指标并标出离群者。
 
 ## 8. 输出与可追溯性
 
@@ -267,8 +312,8 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 
 | 阶段 | 内容 |
 |---|---|
-| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
-| **P1 质量检查** | `qc` 模块、mne.Report、数据集 QC 汇总表 |
+| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML、统一出图接口 §7.1）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；`had-meeg` 数据集型预设作为第一个端到端用例；日志与错误处理；契约测试；版本 0.2.0 |
+| **P1 质量检查** | 采集质量 QC（§7.2，第一批：电极桥接、平坦/削顶/饱和、工频与窄带峰、头动、事件）、`meu.report`、数据集 QC 汇总表；Neuromag 的 cross-talk / fine-cal 文件从 BIDS 自动查找 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、`epochs` 模块、L3 `Dataset` / `BatchRunner` |
 | **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS；`group` 模块；`meu` 命令行 |
 | **P4 源分析** | 正向模型、逆解、ROI（可选） |
