@@ -36,7 +36,7 @@
 ├──────────────────────────────────────────────────────────────┤
 │ L2  流程层     Pipeline([(name, Step), ...]) + 预设            │  组合、改参、切片、类型转换、YAML
 ├──────────────────────────────────────────────────────────────┤
-│ L1  步骤层     Step(BaseEstimator): fit / transform           │  学到的状态以 _ 结尾，向 ctx 写 QC 和产物
+│ L1  步骤层     Step(BaseEstimator): fit / transform           │  学到的状态和 qc_ 以 _ 结尾挂在对象上
 ├──────────────────────────────────────────────────────────────┤
 │ L0  函数层     纯函数 f(inst, **params) -> inst | result       │  对上游库的薄封装，可单独调用
 └──────────────────────────────────────────────────────────────┘
@@ -54,7 +54,7 @@
 | 参数只在 `__init__` 中声明，`__init__` 不做计算 | Step 的参数完整可序列化（YAML 往返） |
 | `get_params` / `set_params`、嵌套参数 `a__b` | `pipe.set_params(ica__n_components=0.99)` |
 | `fit` / `transform` 分离，学到的状态以 `_` 结尾 | ICA 在 1 Hz 高通副本上拟合、应用到原数据；在一个 run 上拟合、应用到同 session 其他 run；拟合结果可复核 |
-| 命名步骤、`named_steps`、切片 | `pipe[:3].run(raw)` 用来调试中间结果 |
+| 命名步骤、`named_steps`、切片 | `pipe[:3].fit_transform(raw)` 用来调试中间结果 |
 | `clone` | 批处理时每个被试拿到一份干净的流程副本 |
 | `joblib.Memory` | 缓存耗时步骤（ICA、PREP） |
 | `check_estimator` 契约测试 | 对每个 Step 自动检查 §2 的硬约束 |
@@ -64,9 +64,16 @@
 
 ### 4.2 不照搬什么（以及为什么）
 
-- **数据类型会变。** 流程会从 Raw 走到 Epochs 再到 Evoked，每个 Step 要声明自己接受什么类型、输出什么类型，Pipeline 在组装时就检查类型能否衔接。
-- **需要旁路输出。** QC 指标、坏道、ICA 对象、报告图都写入 `Context`，与数据一起传递。sklearn 没有这样的通道。
-- **大多数步骤是对同一份数据拟合再变换。** `pipe.run(x)` 就等于 `fit_transform`，不强迫用户分两次调用。
+- **入口只有 `fit` / `transform` / `fit_transform`，不另设 `run()`。** 与 sklearn 完全一致：
+  - `fit(inst)`：学习状态（坏道、ICA 解混矩阵、ZapLine 空间滤波器等），返回 `self`；
+  - `transform(inst)`：用已学到的状态处理数据，**不重新拟合**，返回数据；
+  - `fit_transform(inst)`：最常见的用法，等价于对同一份数据先 fit 再 transform，返回数据。对 Pipeline 来说，每一步都先 `fit_transform`，再把结果交给下一步。
+- **数据类型会变。** 流程会从 Raw 走到 Epochs 再到 Evoked，每个 Step 要声明接受和输出的类型，Pipeline 在构造时就检查能否衔接。
+- **旁路输出挂在对象上，不随返回值传递。** 按 sklearn 惯例，fit 之后的产物都是以 `_` 结尾的属性：
+  - 每个 Step 有自己的状态（如 `ica_`、`bads_`）和 `qc_`（该步的 QC 指标）；
+  - Pipeline 汇总得到 `qc_`（`{步骤名: 指标}`）、`provenance_`（参数、版本、耗时、警告）、`system_`（识别出的采集系统）。
+  - 因此不需要单独的 Context 对象。系统识别在 `Pipeline.fit` 开始时做一次，作为参数传给各 Step 的 `fit`。
+- **输入就是 MNE 对象。** `fit` 接受 `Raw` / `Epochs`；用 `io.read(bids_path)` 读入时，工频、通道类型等元信息已由 mne-bids 写进 `info`。为方便起见，`Pipeline.fit*` 也接受 `BIDSPath` 或文件路径，内部调用 `io.read`。
 - **复制还是原地修改。** 默认先复制，`copy=False` 时原地修改，用于节省 MEG 大数据的内存。
 
 ### 4.3 接口草图
@@ -77,44 +84,35 @@ class Step(BaseEstimator):
     returns: type | None = None                 # None 表示与输入同类型
     systems: set[str] | None = None             # 适用的采集系统，None 表示全部
 
-    def fit(self, inst, ctx: Context | None = None) -> Self: ...
-    def transform(self, inst, ctx: Context | None = None): ...
-    def fit_transform(self, inst, ctx=None): ...   # 默认 fit 后 transform，可覆盖
+    def fit(self, inst, y=None, *, system: str | None = None) -> Self: ...
+    def transform(self, inst): ...
+    def fit_transform(self, inst, y=None, *, system=None): ...  # 默认 fit 后 transform，可覆盖
+    # 拟合后：<state>_（如 ica_、bads_）、qc_: dict
 
 
-@dataclass
-class Context:
-    system: str                       # neuromag / ctf / kit / opm / eeg / ...
-    bids_path: BIDSPath | None
-    qc: dict[str, dict]               # step_name -> 指标
-    artifacts: dict[str, Any]         # step_name -> ICA 对象、坏道列表、图等
-    provenance: list[StepRecord]      # 参数、版本、耗时、警告
-
-
-class Pipeline:
-    def __init__(self, steps: list[tuple[str, Step]], memory=None): ...
-    def run(self, inst_or_path, ctx=None) -> Result: ...     # = fit_transform
-    def fit(self, ...); def transform(self, ...)
-    def set_params(self, **kw); def get_params(self, deep=True)
+class Pipeline(BaseEstimator):
+    def __init__(self, steps: list[tuple[str, Step]], memory=None, copy=True): ...
+    def fit(self, inst_or_path, y=None) -> Self: ...
+    def transform(self, inst_or_path): ...
+    def fit_transform(self, inst_or_path, y=None): ...
+    # get_params / set_params（嵌套 a__b）/ clone 继承自 BaseEstimator
     def __getitem__(self, idx) -> Pipeline                   # 切片
     named_steps: dict[str, Step]
     def insert_after(self, name, new_name, step); def replace(self, name, step)
     def to_yaml(self, path); @classmethod def from_yaml(cls, path)
     @classmethod def preset(cls, name, system="auto") -> Pipeline
+    # 拟合后：system_, qc_, provenance_
 
 
-@dataclass
-class Result:
-    data: BaseRaw | BaseEpochs | Evoked
-    ctx: Context
-    def save(self, root, desc="preproc"): ...   # BIDS derivatives
-    def report(self) -> mne.Report: ...
+# 输出与报告是独立的函数，不是 Pipeline 的方法
+io.save_derivative(inst, bids_path, root, pipeline=pipe, desc="preproc")  # 数据 + provenance + 中间产物
+qc.report(pipe, inst) -> mne.Report
 ```
 
 ### 4.4 使用示例
 
 ```python
-from meeg_utils import Pipeline, steps as S
+from meeg_utils import Pipeline, io, qc, steps as S
 
 pipe = Pipeline([
     ("filter", S.Filter(l_freq=0.1, h_freq=100)),
@@ -125,12 +123,21 @@ pipe = Pipeline([
                      labeler="iclabel", threshold=0.8)),
 ])
 
+raw = io.read(bids_path)
 pipe.set_params(ica__threshold=0.9)
-res = pipe[:3].run(bids_path)        # 只跑前三步调试
-res = pipe.run(bids_path)
-pipe.named_steps["ica"].ica_         # 可检查、可保存
-res.save(deriv_root)
+
+tmp   = pipe[:3].fit_transform(raw)          # 只跑前三步调试
+clean = pipe.fit_transform(raw)
+
+pipe.named_steps["ica"].ica_                 # 可检查、可保存
+pipe.qc_["line"], pipe.provenance_
+qc.report(pipe, clean).save("sub-01_report.html")
+io.save_derivative(clean, bids_path, deriv_root, pipeline=pipe)
 pipe.to_yaml("config.yaml")
+
+# 在 run-1 上拟合，应用到同一 session 的 run-2（复用坏道和 ICA）
+pipe.fit(raw_run1)
+clean2 = pipe.transform(raw_run2)
 
 # 预设 + 局部修改
 pipe = Pipeline.preset("eeg-erp").set_params(filter__h_freq=40)
@@ -148,7 +155,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 | OPM | 均匀场校正（`compute_proj_hfc`）；没有固定的头坐标 |
 | EEG | montage（电极位置）、参考方式、EOG/ECG 通道类型 |
 
-`io.detect_system(raw) -> str` 读数据时识别系统（依据 `info` 中的设备信息、`compensation_grade`、通道类型等），结果写入 `Context.system`。
+`io.detect_system(raw) -> str` 读数据时识别系统（依据 `info` 中的设备信息、`compensation_grade`、通道类型等），结果存为 `pipe.system_` 并传给各 Step 的 `fit`。
 
 - 声明了 `systems` 的 Step，用在不适用的系统上**直接报错**；`method="auto"` 的 Step 按系统选择后端。
 - MEG 和 EEG 混合采集时，用 `ByChannelType` 分支处理，所有通道都保留。
@@ -189,9 +196,9 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 ## 7. 质量检查（QC）与报告
 
 - **原始数据 QC**（`qc.raw`）：各通道方差和平坦度、噪声通道候选、PSD、工频强度、事件和标注检查、MEG 头动、时长和采样率核对。
-- **步骤 QC**：每个 Step 向 `ctx.qc[name]` 写入指标，例如坏道数及比例、ICA 剔除的成分及其解释方差、工频衰减 dB、ASR 修复比例、epoch 拒绝率。
-- **报告**：`Result.report()` 根据 ctx 生成 `mne.Report`（每个被试一份 HTML）。`Dataset.qc_table()` 汇总所有被试的指标，并按阈值标出离群被试。
-- QC 可以单独运行：`qc.run(bids_root)`，先看数据、再定参数。
+- **步骤 QC**：每个 Step 拟合后在 `qc_` 中记录指标，Pipeline 汇总为 `pipe.qc_`，例如坏道数及比例、ICA 剔除的成分及其解释方差、工频衰减 dB、ASR 修复比例、epoch 拒绝率。
+- **报告**：`qc.report(pipe, inst)` 根据 `pipe.qc_` 和各步产物生成 `mne.Report`（每个被试一份 HTML）。`Dataset.qc_table()` 汇总所有被试的指标，并按阈值标出离群被试。
+- QC 可以单独运行：`qc.inspect(bids_root)`，先看数据、再定参数。
 
 ## 8. 输出与可追溯性
 
@@ -228,7 +235,7 @@ MNE 能读几乎所有格式，但预处理随系统不同：
 
 | 阶段 | 内容 |
 |---|---|
-| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、Context、Result、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；日志与错误处理；契约测试；版本 0.2.0 |
+| **P0 打地基** | §2 硬约束；`core`（Step、Pipeline、YAML）；`io`（读入、`detect_system`、derivatives）；现有预处理迁移为 Step（Filter、LineNoise→mne-denoise、BadChannels、Reference、ICA 修正）；日志与错误处理；契约测试；版本 0.2.0 |
 | **P1 质量检查** | `qc` 模块、mne.Report、数据集 QC 汇总表 |
 | **P2 预处理补全** | Maxwell/SSS、HFC、RefRegression、BadSegments/ASR、SNS、`ByChannelType`、预设（eeg-erp / eeg-rest / meg-erp / meg-rest，按系统自动选择）、`epochs` 模块、L3 `Dataset` / `BatchRunner` |
 | **P3 分析** | ERP/ERF、PSD + specparam、时频、解码、连接性、DSS |
