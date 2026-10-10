@@ -26,6 +26,8 @@ _PREP_SCORES = {
 }
 
 BAD_CHANNEL_METHODS = ("auto", "prep", "maxwell")
+#: Time windows above the limit that make a channel noisy (MNE's default ``min_count``).
+_MAXWELL_MIN_COUNT = 5
 
 
 @contextlib.contextmanager
@@ -276,20 +278,23 @@ class BadChannels(Step):
             cross_talk=cross_talk,
             calibration=calibration,
             h_freq=self.h_freq,
+            min_count=_MAXWELL_MIN_COUNT,
             return_scores=True,
             verbose=False,
         )
-        with warnings.catch_warnings():  # channels already marked bad have no scores
-            warnings.simplefilter("ignore", RuntimeWarning)
-            noisy_scores = np.nanmax(scores["scores_noisy"], axis=1)
-            limits = np.nanmax(scores["limits_noisy"], axis=1)
+        # MNE marks a channel noisy when its score exceeds the limit in at least
+        # min_count time windows (capped at the number of windows): show that count
+        # (channels already bad have no scores)
+        with np.errstate(invalid="ignore"):
+            above = np.sum(scores["scores_noisy"] > scores["limits_noisy"], axis=1)
+        min_count = min(_MAXWELL_MIN_COUNT, scores["scores_noisy"].shape[1])
         for ch_type in np.unique(scores["ch_types"]):
             sel = np.asarray(scores["ch_types"]) == ch_type
             self.scores_[f"Maxwell {ch_type}"] = {
                 "ch_names": list(np.asarray(scores["ch_names"])[sel]),
-                "values": noisy_scores[sel],
-                "threshold": float(np.nanmax(limits[sel])),
-                "label": "max noisy score over time bins",
+                "values": above[sel].astype(float),
+                "threshold": float(min_count),
+                "label": "windows above limit",
             }
         refs = set(meg.copy().pick("ref_meg", exclude=[]).ch_names) if "ref_meg" in meg else set()
         bad_refs = sorted((set(noisy) | set(flat)) & refs)
@@ -322,7 +327,7 @@ class BadChannels(Step):
         fig, axes = plt.subplots(
             len(self.scores_),
             1,
-            figsize=(10, 2.2 * len(self.scores_)),
+            figsize=(10, 2.6 * len(self.scores_)),
             squeeze=False,
             layout="constrained",
         )
@@ -337,8 +342,15 @@ class BadChannels(Step):
                 for tick, ch in zip(ax.get_xticklabels(), score["ch_names"], strict=True):
                     if ch in self.bads_:  # e.g. flat channels, whose scores are 0 or NaN
                         tick.set(color="C3", fontweight="bold")
-            else:
+            else:  # too many channels for tick labels: name the detected ones
                 ax.set_xticks([])
+                for i, ch in enumerate(score["ch_names"]):
+                    if ch in self.bads_:
+                        ax.annotate(
+                            ch, (i, np.nan_to_num(values[i])), xytext=(0, 2),
+                            textcoords="offset points", ha="center", va="bottom",
+                            fontsize=7, color="C3",
+                        )  # fmt: skip
         axes[0, 0].legend(frameon=False, fontsize="small")
         fig.suptitle("Bad-channel detection scores (detected channels in red)")
         return fig

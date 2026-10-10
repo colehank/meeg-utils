@@ -217,6 +217,13 @@ class TestBadChannels:
         assert "MEG 2443" in step.bads_
         assert step.qc_["meg"]["fraction"] < 0.05
         assert step.qc_["maxwell_files"] == {"cross_talk": None, "calibration": None}
+        # the scores figure shows what decided: detected channels at or above the line
+        for score in step.scores_.values():
+            for ch, value in zip(score["ch_names"], score["values"], strict=True):
+                if ch in step.qc_["meg"]["by_criterion"]["noisy"]:
+                    assert value >= score["threshold"]
+                else:
+                    assert value < score["threshold"]
 
     def test_maxwell_files_must_be_found(self, neuromag: BaseRaw) -> None:
         """cross_talk='auto' on a recording outside BIDS fails loudly."""
