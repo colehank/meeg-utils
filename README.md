@@ -10,7 +10,7 @@ MEG/EEG quality control, preprocessing and epoching on top of
 [MNE-Python](https://mne.tools): scikit-learn style steps with documented
 defaults, QC metrics and figures for every step, BIDS in and out.
 
-![Pipeline](resources/preprocessing_pipeline.png)
+![Architecture: read, acquisition QC, per-run preprocessing, epoching and combining runs](resources/architecture.svg)
 
 ```python
 import meeg_utils as meu
