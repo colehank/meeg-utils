@@ -23,8 +23,6 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-LEVEL_ORDER = ("ok", "warn", "fail")
-
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Run the ``meu`` command line.
@@ -196,8 +194,8 @@ def _qc(args: argparse.Namespace) -> int:
     if result.errors:
         return 1
     if args.fail_on is not None:
-        worst = max((r.level for r in result.reports.values()), key=LEVEL_ORDER.index, default="ok")
-        if LEVEL_ORDER.index(worst) >= LEVEL_ORDER.index(args.fail_on):
+        worst = max((r.level for r in result.reports.values()), key=qc.LEVELS.index, default="ok")
+        if qc.LEVELS.index(worst) >= qc.LEVELS.index(args.fail_on):
             return 2
     return 0
 

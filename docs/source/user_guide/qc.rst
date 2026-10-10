@@ -18,23 +18,51 @@ the data. Checks never modify the data.
 Each check is a small class: parameters (thresholds included) are set in
 the constructor, ``compute(raw)`` measures, and the results are in
 ``metrics_`` and ``findings_`` (one :class:`~meeg_utils.qc.Finding` per
-criterion, with a verdict ``"ok"``, ``"warn"`` or ``"fail"`` and a message
-that states the threshold). Use your lab's thresholds by passing them:
+criterion, with a level and a message that states the threshold).
+
+Verdicts and measurements
+-------------------------
+
+Only some criteria have a threshold that holds for every dataset. The
+checks distinguish three kinds:
+
+- **Problems by definition** are judged (``"warn"`` or ``"fail"``) by
+  default: flat, clipped or NaN channels, SQUID jumps, bridged electrodes
+  (and groups too large to interpolate), a flat EOG, unreliable heartbeat
+  detection on an ECG channel, missing positions or head transform, event
+  counts that differ from ``expected``, BIDS sidecars that disagree with
+  the data.
+- **Comparisons within the recording** are judged with the method's own
+  default: outlying channels (LOF), channels with excess line noise
+  (robust z), muscle and jump z-scores, narrowband peaks.
+- **Measurements whose acceptable range depends on the dataset** are only
+  reported, with level ``"info"`` and a commonly used value in the message:
+  head movement, share of time with muscle activity, blink rate, heart
+  rate, electrode impedance, cHPI coil SNR, days between the empty room and
+  the recording. Children move more than adults, trained people have slow
+  hearts, passive electrodes have higher impedances than active ones.
+
+``"info"`` findings are not flags and do not raise the level of a report.
+Two ways to judge them:
 
 .. code-block:: python
 
+   # 1. your lab's limits, for your population and equipment
    meu.qc.inspect(raw, checks=[
        meu.qc.Impedance(warn_kohm=10),            # passive electrodes
-       meu.qc.HeadMovement(warn_mm=3),
+       meu.qc.HeadMovement(warn_mm=5),
        meu.qc.Events(expected={"stimulus": 240}),
    ])
+
+   # 2. relative to the rest of the dataset: recordings that stand out
+   meu.qc.inspect_dataset("bids/").outliers   # modified z > 3.5 on any metric
 
 Checks
 ------
 
-Every default threshold comes from MNE's defaults or the literature, and is
+Every default comes from MNE's defaults or the literature, and is
 documented with its source in the class docstring; where no standard
-exists, the docstring says so.
+exists, the docstring says so and the default is to report only.
 
 .. list-table::
    :header-rows: 1

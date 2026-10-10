@@ -14,8 +14,11 @@ from sklearn.base import BaseEstimator
 from ..core.plotting import PlotMixin
 from ..io import detect_system, get_datatypes, read
 
-#: Levels of a finding, from best to worst.
-LEVELS = ("ok", "warn", "fail")
+#: Levels of a finding, from least to most severe. ``"info"`` is a measurement
+#: reported without a verdict: its acceptable range depends on the dataset
+#: (population, task, equipment), so it is left to the user's threshold or
+#: to the dataset-level outlier detection (:func:`meeg_utils.qc.find_outliers`).
+LEVELS = ("info", "ok", "warn", "fail")
 
 
 @dataclass(frozen=True)
@@ -30,8 +33,8 @@ class Finding:
         The metric that was evaluated.
     value : Any
         Its value.
-    level : {"ok", "warn", "fail"}
-        Verdict.
+    level : {"info", "ok", "warn", "fail"}
+        Verdict; ``"info"`` when the value was measured but not judged.
     message : str
         Human-readable explanation, including the threshold that applied.
     """
@@ -52,12 +55,15 @@ class Check(PlotMixin, BaseEstimator):
 
     A check answers one question about how well a recording was acquired
     and never modifies the data. Like a step, it takes all parameters in
-    ``__init__`` (thresholds included, with their source documented); then
+    ``__init__`` (thresholds included, with their source documented;
+    thresholds without an established, dataset-independent value default to
+    ``None``, i.e. the value is only reported); then
     :meth:`compute` measures the recording and stores
 
     - ``metrics_``: the measurements (plain, JSON-serializable values);
     - ``findings_``: one :class:`Finding` per criterion evaluated, with a
-      verdict ``"ok"``, ``"warn"`` or ``"fail"``;
+      verdict ``"ok"``, ``"warn"`` or ``"fail"``, or ``"info"`` for a
+      measurement that has no threshold;
 
     and :meth:`plot` draws the figures listed in ``plot_kinds``.
 
@@ -131,7 +137,10 @@ class Check(PlotMixin, BaseEstimator):
 
     @property
     def level(self) -> str:
-        """The worst verdict of the findings (``"ok"`` if there are none)."""
+        """The worst verdict of the findings (``"ok"`` if there are none).
+
+        ``"info"`` when every finding is an unjudged measurement.
+        """
         levels = [f.level for f in getattr(self, "findings_", [])]
         return max(levels, key=LEVELS.index, default="ok")
 
@@ -149,11 +158,14 @@ class Check(PlotMixin, BaseEstimator):
         what: str,
         unit: str = "",
         detail: str = "",
+        typical: str = "",
     ) -> str:
         """Record a finding comparing ``value`` with the thresholds.
 
         By default larger values are worse (``value > threshold``); with
         ``below=True`` smaller values are worse (``value < threshold``).
+        Without thresholds the finding is ``"info"``, and ``typical`` (a
+        commonly used value, for orientation) is added to the message.
         """
 
         def exceeds(threshold: float | None) -> bool:
@@ -161,14 +173,19 @@ class Check(PlotMixin, BaseEstimator):
                 return False
             return value < threshold if below else value > threshold
 
-        level = "fail" if exceeds(fail) else "warn" if exceeds(warn) else "ok"
+        if warn is None and fail is None:
+            level = "info"
+        else:
+            level = "fail" if exceeds(fail) else "warn" if exceeds(warn) else "ok"
         threshold = fail if level == "fail" else warn if warn is not None else fail
         relation = ("<" if below else ">") if level != "ok" else ("≥" if below else "≤")
         shown = f"{value:g}" if isinstance(value, int | float) else str(value)
         message = f"{what}: {shown}{unit}"
         if threshold is not None:
             message += f" ({relation} {threshold:g}{unit})"
-        if detail and level != "ok":
+        elif typical:
+            message += f" (no threshold set; {typical})"
+        if detail and level not in ("ok", "info"):
             message += f"; {detail}"
         self.findings_.append(Finding(self.name, metric, value, level, message))
         return level
@@ -205,8 +222,8 @@ class QCReport:
 
     @property
     def flags(self) -> list[Finding]:
-        """The findings that are not ``"ok"``, worst first."""
-        flagged = [f for f in self.findings if f.level != "ok"]
+        """The findings that are ``"warn"`` or ``"fail"``, worst first."""
+        flagged = [f for f in self.findings if f.level in ("warn", "fail")]
         return sorted(flagged, key=lambda f: -LEVELS.index(f.level))
 
     @property
@@ -254,7 +271,9 @@ class QCReport:
         lines = [f"<QCReport {self.source or ''} level={self.level!r}>"]
         for name, check in self.checks.items():
             lines.append(f"  {check.level:<4} {name}")
-            lines.extend(f"         - {f.message}" for f in check.findings_ if f.level != "ok")
+            lines.extend(
+                f"         - {f.message}" for f in check.findings_ if f.level in ("warn", "fail")
+            )
         lines.extend(f"  skip {name}: {reason}" for name, reason in self.skipped.items())
         return "\n".join(lines)
 

@@ -232,17 +232,18 @@ class Impedance(Check):
     impedances : dict | None
         Channel name mapped to impedance in kΩ; ``None`` reads
         ``raw.impedances``.
-    warn_kohm : float
-        Impedance above which an electrode is flagged. The default, 25 kΩ, is
-        Brain Products' recommended maximum for active electrodes; use 5-10
-        kΩ for passive electrodes, as the acceptable value depends on the
-        amplifier's input impedance and the electrode type.
+    warn_kohm : float | None
+        Impedance above which an electrode is flagged. The acceptable value
+        depends on the amplifier's input impedance and the electrode type:
+        Brain Products recommends at most 25 kΩ for active electrodes, 5-10
+        kΩ is usual for passive ones. ``None`` (default) reports the
+        impedances without a verdict; set the value for your system.
 
     Attributes
     ----------
     metrics_ : dict
         ``impedances`` (kΩ per channel), ``median_kohm``, ``max_kohm`` and
-        ``high`` (channels above ``warn_kohm``).
+        ``high`` (channels above ``warn_kohm``; empty without a threshold).
 
     Notes
     -----
@@ -253,7 +254,9 @@ class Impedance(Check):
     modalities: ClassVar[frozenset[str]] = frozenset({"eeg"})
     plot_kinds: ClassVar[dict[str, bool]] = {"channels": False}
 
-    def __init__(self, *, impedances: dict[str, float] | None = None, warn_kohm: float = 25.0):
+    def __init__(
+        self, *, impedances: dict[str, float] | None = None, warn_kohm: float | None = None
+    ) -> None:
         self.impedances = impedances
         self.warn_kohm = warn_kohm
 
@@ -284,15 +287,24 @@ class Impedance(Check):
         values = {ch: v for ch, v in values.items() if ch in eeg and np.isfinite(v)}
         if not values:
             raise ValueError("No impedance values for the EEG channels.")
-        high = sorted(
-            (ch for ch, v in values.items() if v > self.warn_kohm), key=lambda ch: values[ch]
-        )
+        limit = np.inf if self.warn_kohm is None else self.warn_kohm
+        high = sorted((ch for ch, v in values.items() if v > limit), key=lambda ch: values[ch])
         self.metrics_.update(
             impedances=values,
             median_kohm=float(np.median(list(values.values()))),
             max_kohm=float(max(values.values())),
             high=high,
         )
+        if self.warn_kohm is None:
+            self._judge(
+                "max_kohm",
+                round(self.metrics_["max_kohm"], 1),
+                what="highest electrode impedance",
+                unit=" kΩ",
+                typical=f"median {self.metrics_['median_kohm']:.1f} kΩ; usual limits are "
+                "25 kΩ for active and 5-10 kΩ for passive electrodes",
+            )
+            return
         self._judge(
             "n_high",
             len(high),
@@ -307,9 +319,10 @@ class Impedance(Check):
         values = self.metrics_["impedances"]
         names = sorted(values, key=lambda ch: values[ch], reverse=True)
         fig, ax = plt.subplots(figsize=(max(6.0, 0.18 * len(names)), 3.5), layout="constrained")
-        colors = ["C3" if values[n] > self.warn_kohm else "C0" for n in names]
+        colors = ["C3" if n in self.metrics_["high"] else "C0" for n in names]
         ax.bar(range(len(names)), [values[n] for n in names], color=colors)
-        ax.axhline(self.warn_kohm, color="C3", ls="--", lw=1)
+        if self.warn_kohm is not None:
+            ax.axhline(self.warn_kohm, color="C3", ls="--", lw=1)
         ax.set_xticks(range(len(names)), names, rotation=90, fontsize=7)
         ax.set(ylabel="Impedance (kΩ)", title="Electrode impedances")
         return fig

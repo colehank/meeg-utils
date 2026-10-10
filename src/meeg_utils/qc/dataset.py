@@ -141,15 +141,20 @@ class DatasetQC:
                 figsize=(max(6.0, 1.0 + 0.7 * len(checks)), max(3.0, 1.5 + 0.28 * len(sources))),
                 layout="constrained",
             )
-            cmap = ListedColormap(["#4caf50", "#ffb300", "#e53935"])
-            ax.imshow(grid, cmap=cmap, vmin=0, vmax=2, aspect="auto", interpolation="nearest")
+            cmap = ListedColormap(["#b0bec5", "#4caf50", "#ffb300", "#e53935"])
+            ax.imshow(
+                grid, cmap=cmap, vmin=0, vmax=len(LEVELS) - 1, aspect="auto",
+                interpolation="nearest",
+            )  # fmt: skip
             for i, source in enumerate(sources):
                 for j, check in enumerate(checks):
                     if (source, check) in outlying:
                         ax.text(j, i, "●", ha="center", va="center", fontsize=7)
             ax.set_xticks(range(len(checks)), checks, rotation=45, ha="right")
             ax.set_yticks(range(len(sources)), [Path(s).name for s in sources], fontsize=7)
-            ax.set_title("QC per recording (green ok, amber warn, red fail; ● outlier)")
+            ax.set_title(
+                "QC per recording (grey measured only, green ok, amber warn, red fail; ● outlier)"
+            )
         return {"levels": fig}
 
     def __repr__(self) -> str:

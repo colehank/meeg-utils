@@ -133,10 +133,12 @@ class ChpiSNR(Check):
 
     Parameters
     ----------
-    max_drop_db : float
+    max_drop_db : float | None
         A coil whose median SNR is this much below the median over coils is
-        flagged. There is no published limit; 10 dB (a tenth of the power) is
-        this library's choice.
+        flagged. There is no published limit (coils differ with their
+        distance to the sensors, so some spread is normal); ``None``
+        (default) reports each coil's drop without a verdict. 10 dB (a tenth
+        of the power) is a reasonable starting point.
 
     Attributes
     ----------
@@ -154,7 +156,7 @@ class ChpiSNR(Check):
     systems: ClassVar[frozenset[str] | None] = frozenset({"neuromag"})
     plot_kinds: ClassVar[dict[str, bool]] = {"snr": False}
 
-    def __init__(self, *, max_drop_db: float = 10.0) -> None:
+    def __init__(self, *, max_drop_db: float | None = None) -> None:
         self.max_drop_db = max_drop_db
 
     def not_applicable(self, raw: BaseRaw) -> str | None:
@@ -198,6 +200,7 @@ class ChpiSNR(Check):
                     "the median coil",
                     unit=" dB",
                     detail="coil loose, badly placed or broken",
+                    typical="compare across coils and recordings",
                 )
 
     def _plot_snr(self, inst: Any) -> Any:
@@ -461,8 +464,8 @@ class EmptyRoom(Check):
     given. Reported per channel type: the median noise floor (amplitude
     spectral density, 20-100 Hz without line harmonics) and how much the
     recording exceeds it; flagged: sensors that are outliers in the empty
-    room (noisy or dead sensors to mark bad), and an empty room recorded on
-    another day than the recording.
+    room (noisy or dead sensors to mark bad). The days between the empty
+    room and the recording are reported.
 
     Parameters
     ----------
@@ -470,9 +473,11 @@ class EmptyRoom(Check):
         ``"auto"`` searches the BIDS dataset of the recording.
     band : tuple of float
         Band of the noise floor (Hz).
-    max_days : float
-        An empty room more than this many days from the recording is flagged
-        (MNE-BIDS-Pipeline and MaxFilter use the same-day empty room).
+    max_days : float | None
+        An empty room more than this many days from the recording is
+        flagged. Same-day empty rooms are usual (MNE-BIDS-Pipeline picks the
+        closest in date), but how fast the room's noise changes depends on
+        the site, so ``None`` (default) reports the gap without a verdict.
 
     Attributes
     ----------
@@ -498,7 +503,7 @@ class EmptyRoom(Check):
         *,
         empty_room: Any = "auto",
         band: tuple[float, float] = (20.0, 100.0),
-        max_days: float = 1.0,
+        max_days: float | None = None,
     ) -> None:
         self.empty_room = empty_room
         self.band = band
@@ -552,6 +557,7 @@ class EmptyRoom(Check):
                 warn=self.max_days,
                 what="days between the recording and its empty room",
                 detail="the room's noise may have changed",
+                typical="same day is usual",
             )
 
         line = raw.info["line_freq"] or er.info["line_freq"]
@@ -578,7 +584,9 @@ class EmptyRoom(Check):
             live = (power_er > 0) & (power_rec > 0)
             z = _modified_z(np.log10(asd_er[live])) if live.sum() > 2 else np.zeros(live.sum())
             outliers = [
-                n for n, zi in zip(np.array(names)[live], z, strict=True) if abs(zi) > OUTLIER_Z
+                str(n)
+                for n, zi in zip(np.array(names)[live], z, strict=True)
+                if abs(zi) > OUTLIER_Z
             ]
             dead = [n for n, ok in zip(names, live, strict=True) if not ok]
             self.metrics_[ch_type] = {

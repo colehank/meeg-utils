@@ -186,9 +186,12 @@ class Muscle(Check):
         Band in which muscle activity is measured (MNE default 110-140 Hz).
     ch_type : str | None
         Channel type to use; ``None`` lets MNE choose (mag, then grad, then eeg).
-    warn_fraction : float
+    warn_fraction : float | None
         Fraction of time above which the recording is flagged. There is no
-        established limit; the default is 10 %.
+        established limit, and how much muscle activity is acceptable
+        depends on the task (speaking, movement) and the analysis
+        (high-frequency activity is affected most). ``None`` (default)
+        reports the fraction without a verdict.
 
     Attributes
     ----------
@@ -209,7 +212,7 @@ class Muscle(Check):
         threshold: float = 4.0,
         filter_freq: tuple[float, float] = (110.0, 140.0),
         ch_type: str | None = None,
-        warn_fraction: float = 0.1,
+        warn_fraction: float | None = None,
     ) -> None:
         self.threshold = threshold
         self.filter_freq = filter_freq
@@ -261,6 +264,7 @@ class Muscle(Check):
             warn=self.warn_fraction,
             what="fraction of time with muscle activity",
             detail="ask the participant to relax jaw, face and neck",
+            typical="compare across the dataset",
         )
 
     def _plot_scores(self, inst: Any) -> Any:
@@ -608,12 +612,15 @@ class Blinks(Check):
     defaults). Spontaneous blink rates of healthy adults are around 17 per
     minute at rest and fall to about 4.5 per minute while reading
     (Bentivoglio et al., 1997, Mov Disord 12:1028); a much lower rate
-    usually means a detached or misplaced EOG electrode.
+    usually means a detached or misplaced EOG electrode. A flat EOG channel
+    is always flagged.
 
     Parameters
     ----------
-    min_rate : float
-        Blinks per minute below which the EOG is flagged.
+    min_rate : float | None
+        Blinks per minute below which the EOG is flagged. Blink rates vary
+        widely between people and tasks (Bentivoglio et al., 1997), so the
+        default ``None`` reports the rate without a verdict.
 
     Attributes
     ----------
@@ -628,7 +635,7 @@ class Blinks(Check):
     name: ClassVar[str] = "blinks"
     plot_kinds: ClassVar[dict[str, bool]] = {"blinks": False}
 
-    def __init__(self, *, min_rate: float = 2.0) -> None:
+    def __init__(self, *, min_rate: float | None = None) -> None:
         self.min_rate = min_rate
 
     def not_applicable(self, raw: BaseRaw) -> str | None:
@@ -674,6 +681,12 @@ class Blinks(Check):
             channels=[raw.ch_names[i] for i in eog],
             flat_channels=[raw.ch_names[i] for i in eog if raw.ch_names[i] not in live],
         )
+        flat = self.metrics_["flat_channels"]
+        if flat:
+            self._note(
+                "flat_channels", flat, f"flat EOG channel(s): {', '.join(flat)}; check the "
+                "EOG electrodes", "warn",
+            )  # fmt: skip
         self._judge(
             "rate_per_min",
             round(rate, 2),
@@ -681,7 +694,8 @@ class Blinks(Check):
             below=True,
             what="blink rate",
             unit="/min",
-            detail="check the EOG electrodes" + (" (EOG signal is flat)" if not live else ""),
+            detail="check the EOG electrodes",
+            typical="about 17/min at rest, 4.5/min while reading",
         )
 
     def _plot_blinks(self, inst: Any) -> Any:
@@ -697,31 +711,40 @@ class HeartRate(Check):
 
     Heartbeats are detected with :func:`mne.preprocessing.find_ecg_events`
     (MNE defaults; without an ECG channel MNE builds a synthetic ECG from
-    the MEG magnetometers). A resting heart rate outside 40-120 bpm usually
-    means the detection failed, i.e. the ECG electrodes are poorly placed;
-    the normal adult range is 60-100 bpm, and well-trained people can be
-    below 60.
+    the MEG magnetometers).
 
-    A plausible rate is not enough: missed or spurious beats make the
-    intervals between beats irregular (a missed beat doubles an interval).
-    Intervals more than 30 % away from the median interval are counted;
-    normal beat-to-beat variability at rest stays well below that.
+    Whether the detection worked is judged from the intervals between
+    beats, not from the rate: missed or spurious beats make them irregular
+    (a missed beat doubles an interval). Intervals more than 30 % away from
+    the median interval are counted; normal beat-to-beat variability at
+    rest stays well below that. When too many are irregular the rate is
+    not reported (``heart_rate_bpm`` is ``None``, ``reliable`` is
+    ``False``). With an ECG channel this is a ``"warn"`` (check the ECG
+    electrodes); with the synthetic ECG it is ``"info"``, since the
+    magnetometers often pick up the heart too weakly and nothing is wrong
+    with the recording.
+
+    The rate itself is reported without a verdict by default: the normal
+    adult resting range is 60-100 bpm, but trained people are often below
+    60 and children above 100.
 
     Parameters
     ----------
-    min_bpm, max_bpm : float
-        Plausible range of the detected heart rate.
+    min_bpm, max_bpm : float | None
+        Range of the heart rate outside which it is flagged; ``None``
+        (default) does not judge the rate.
     max_irregular : float
-        Fraction of irregular intervals above which the detection is flagged
-        as unreliable. There is no published limit; 0.1 is this library's
+        Fraction of irregular intervals above which the detection is
+        unreliable. There is no published limit; 0.1 is this library's
         choice. (Synthetic ECG from CTF magnetometers in HAD-MEEG gave a
-        plausible 86 bpm with intervals varying by 340 ms.)
+        plausible-looking 86 bpm with intervals varying by 340 ms.)
 
     Attributes
     ----------
     metrics_ : dict
-        ``heart_rate_bpm``, ``n_beats``, ``rr_sd_ms``, ``irregular_fraction``
-        and ``channel`` (``"synthetic"`` when derived from MEG).
+        ``heart_rate_bpm`` (``None`` when unreliable), ``reliable``,
+        ``n_beats``, ``rr_sd_ms``, ``irregular_fraction`` and ``channel``
+        (``"synthetic"`` when derived from MEG).
 
     Notes
     -----
@@ -732,7 +755,11 @@ class HeartRate(Check):
     plot_kinds: ClassVar[dict[str, bool]] = {"heartbeats": False}
 
     def __init__(
-        self, *, min_bpm: float = 40.0, max_bpm: float = 120.0, max_irregular: float = 0.1
+        self,
+        *,
+        min_bpm: float | None = None,
+        max_bpm: float | None = None,
+        max_irregular: float = 0.1,
     ) -> None:
         self.min_bpm = min_bpm
         self.max_bpm = max_bpm
@@ -766,46 +793,72 @@ class HeartRate(Check):
         self.beat_times_ = (samples / sfreq).astype(np.float32)
         self.duration_ = float(raw.times[-1])
         self.average_ = _array_average(np.ravel(ecg), samples, sfreq, (-0.3, 0.5))
+        irregular = float(np.mean(np.abs(rr / np.median(rr) - 1) > 0.3)) if len(rr) > 1 else 1.0
+        reliable = irregular <= self.max_irregular
         self.metrics_.update(
-            heart_rate_bpm=round(bpm, 1),
+            heart_rate_bpm=round(bpm, 1) if reliable else None,
+            reliable=reliable,
             n_beats=len(events),
             rr_sd_ms=round(float(np.std(rr) * 1000), 1) if len(rr) else None,
+            irregular_fraction=round(irregular, 3),
             channel=channel,
         )
-        if len(rr):
-            irregular = float(np.mean(np.abs(rr / np.median(rr) - 1) > 0.3))
-            self.metrics_["irregular_fraction"] = round(irregular, 3)
-            self._judge(
-                "irregular_fraction",
-                round(irregular, 3),
-                warn=self.max_irregular,
-                what="beat intervals > 30 % from the median",
-                detail="missed or spurious beats: heartbeat detection is unreliable "
-                f"({channel} ECG); do not rely on ECG-based artifact detection",
+        if not reliable:
+            synthetic = channel == "synthetic"
+            self._note(
+                "reliable",
+                False,
+                f"heartbeat detection unreliable ({channel} ECG): "
+                f"{100 * irregular:.0f} % of beat intervals > 30 % from the median "
+                f"(> {100 * self.max_irregular:g} %), detected rate {bpm:.0f} bpm; "
+                + (
+                    "the magnetometers pick up the heart too weakly, so do not rely on "
+                    "ECG-based artifact detection"
+                    if synthetic
+                    else "check the ECG electrodes"
+                ),
+                "info" if synthetic else "warn",
             )
-        self._judge(
-            "heart_rate_low",
-            round(bpm, 1),
-            warn=self.min_bpm,
-            below=True,
-            what="heart rate",
-            unit=" bpm",
-            detail="ECG detection probably failed; check the ECG electrodes",
-        )
-        self._judge(
-            "heart_rate_high",
-            round(bpm, 1),
-            warn=self.max_bpm,
-            what="heart rate",
-            unit=" bpm",
-            detail="ECG detection probably failed; check the ECG electrodes",
-        )
+            return
+        if self.min_bpm is None and self.max_bpm is None:
+            self._judge(
+                "heart_rate_bpm",
+                round(bpm, 1),
+                what="heart rate",
+                unit=" bpm",
+                typical="60-100 bpm in adults at rest",
+            )
+            return
+        if self.min_bpm is not None:
+            self._judge(
+                "heart_rate_low",
+                round(bpm, 1),
+                warn=self.min_bpm,
+                below=True,
+                what="heart rate",
+                unit=" bpm",
+                detail="check the ECG electrodes",
+            )
+        if self.max_bpm is not None:
+            self._judge(
+                "heart_rate_high",
+                round(bpm, 1),
+                warn=self.max_bpm,
+                what="heart rate",
+                unit=" bpm",
+                detail="check the ECG electrodes",
+            )
 
     def _plot_heartbeats(self, inst: Any) -> Any:
         return _rate_figure(
             self.beat_times_, self.duration_, self.average_, "Heart rate", " bpm",
-            f"{self.metrics_['n_beats']} beats, {self.metrics_['heart_rate_bpm']:.0f} bpm "
-            f"({self.metrics_['channel']})",
+            f"{self.metrics_['n_beats']} beats, "
+            + (
+                f"{self.metrics_['heart_rate_bpm']:.0f} bpm"
+                if self.metrics_["reliable"]
+                else "detection unreliable"
+            )
+            + f" ({self.metrics_['channel']})",
             "ECG (a.u.)", 1.0,
         )  # fmt: skip
 

@@ -32,9 +32,12 @@ class HeadMovement(Check):
     head_pos : str | Path | ndarray | None
         Precomputed head positions (``.pos`` file or array of shape (n, 10));
         ``None`` estimates them from the cHPI signals.
-    warn_mm : float
-        Maximum displacement that is flagged. There is no formal standard;
-        5 mm is a common exclusion or movement-correction criterion.
+    warn_mm : float | None
+        Maximum displacement that is flagged. There is no formal standard
+        and the acceptable movement depends on the participants (children
+        and patients move more) and on whether movement is compensated
+        later; 5 mm is a common exclusion or movement-correction criterion.
+        ``None`` (default) reports the displacement without a verdict.
     origin : tuple of float
         Point (head frame, m) whose displacement is measured.
     gof_limit, dist_limit : float
@@ -52,7 +55,7 @@ class HeadMovement(Check):
     ----------
     metrics_ : dict
         ``max_displacement_mm``, ``median_displacement_mm``,
-        ``fraction_above`` (of time above ``warn_mm``),
+        ``fraction_above`` (of time above ``warn_mm``, when set),
         ``max_rotation_deg``, ``n_positions`` and, when estimated from cHPI,
         ``coil_good_fraction``.
 
@@ -70,7 +73,7 @@ class HeadMovement(Check):
         self,
         *,
         head_pos: str | Path | np.ndarray | None = None,
-        warn_mm: float = 5.0,
+        warn_mm: float | None = None,
         origin: tuple[float, float, float] = (0.0, 0.0, 0.04),
         gof_limit: float = 0.98,
         dist_limit: float = 0.005,
@@ -139,17 +142,22 @@ class HeadMovement(Check):
         self.metrics_.update(
             max_displacement_mm=round(float(displacement.max() * 1000), 2),
             median_displacement_mm=round(float(np.median(displacement) * 1000), 2),
-            fraction_above=round(float((displacement * 1000 > self.warn_mm).mean()), 4),
             max_rotation_deg=round(float(rotation.max()), 2),
             n_positions=len(pos),
         )
+        detail = ""
+        if self.warn_mm is not None:
+            above = float((displacement * 1000 > self.warn_mm).mean())
+            self.metrics_["fraction_above"] = round(above, 4)
+            detail = f"above the limit {100 * above:.0f} % of the time"
         self._judge(
             "max_displacement_mm",
             self.metrics_["max_displacement_mm"],
             warn=self.warn_mm,
             what="maximum head displacement",
             unit=" mm",
-            detail=f"above the limit {100 * self.metrics_['fraction_above']:.0f} % of the time",
+            detail=detail,
+            typical="5 mm is a common limit",
         )
         if coil_good is not None:
             self.metrics_["coil_good_fraction"] = [round(float(g), 3) for g in coil_good]
@@ -175,13 +183,14 @@ class HeadMovement(Check):
         t = self.pos_[:, 0] - self.pos_[0, 0]
         fig, ax = plt.subplots(figsize=(9, 3), layout="constrained")
         ax.plot(t, self.displacement_ * 1000, color="C0")
-        ax.axhline(self.warn_mm, color="C3", ls="--", lw=1, label=f"{self.warn_mm:g} mm")
+        if self.warn_mm is not None:
+            ax.axhline(self.warn_mm, color="C3", ls="--", lw=1, label=f"{self.warn_mm:g} mm")
+            ax.legend(frameon=False)
         ax.set(
             xlabel="Time (s)",
             ylabel="Displacement (mm)",
             title=f"Head displacement relative to dev_head_t (max {self.metrics_['max_displacement_mm']:.1f} mm)",
         )
-        ax.legend(frameon=False)
         return fig
 
 

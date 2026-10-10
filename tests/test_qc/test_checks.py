@@ -130,7 +130,10 @@ class TestBridging:
 class TestImpedance:
     def test_explicit_values(self, eeg):
         values = dict.fromkeys(EEG_CHANNELS, 5.0) | {"C4": 60.0, "Pz": 30.0}
-        check = qc.Impedance(impedances=values).compute(eeg)
+        check = qc.Impedance(impedances=values).compute(eeg)  # no threshold: reported only
+        assert check.metrics_["max_kohm"] == 60.0 and check.metrics_["high"] == []
+        assert check.level == "info"
+        check = qc.Impedance(impedances=values, warn_kohm=25).compute(eeg)
         assert check.metrics_["high"] == ["Pz", "C4"]
         assert check.level == "warn"
         assert qc.Impedance(impedances=values, warn_kohm=100).compute(eeg).level == "ok"
@@ -141,7 +144,7 @@ class TestImpedance:
             "Cz": {"imp": 0.03, "imp_unit": "MOhm"},
             "Pz": {"imp": None, "imp_unit": "kOhm"},
         }
-        check = qc.Impedance().compute(eeg)
+        check = qc.Impedance(warn_kohm=25).compute(eeg)
         assert check.metrics_["impedances"] == {"Fz": 4.0, "Cz": 30.0}
         assert check.metrics_["high"] == ["Cz"]
 
@@ -192,9 +195,11 @@ class TestNarrowbandNoise:
 
 class TestMuscle:
     def test_fraction(self):
-        check = qc.Muscle().compute(_muscle_raw())
+        raw = _muscle_raw()
+        check = qc.Muscle().compute(raw)
         assert check.metrics_["fraction"] == pytest.approx(0.2, abs=0.04)
-        assert check.level == "warn"
+        assert check.level == "info"
+        assert qc.Muscle(warn_fraction=0.1).compute(raw).level == "warn"
 
     def test_needs_high_frequencies(self, eeg):
         assert "140 Hz" in qc.Muscle().not_applicable(eeg)
@@ -204,14 +209,15 @@ class TestBlinks:
     def test_rate(self, eeg):
         check = qc.Blinks().compute(eeg)
         assert check.metrics_["n_blinks"] == pytest.approx(15, abs=1)
-        assert check.level == "ok"
+        assert check.level == "info"
+        assert qc.Blinks(min_rate=2).compute(eeg).level == "ok"
 
     def test_flat_eog(self, eeg):
         eeg._data[eeg.ch_names.index("EOG")] = 0.0
         check = qc.Blinks().compute(eeg)
         assert check.metrics_["rate_per_min"] == 0
         assert check.metrics_["flat_channels"] == ["EOG"]
-        assert check.level == "warn"
+        assert _levels(check)["flat_channels"] == "warn"  # flagged even without a threshold
 
     def test_needs_eog(self, eeg):
         assert (
@@ -225,18 +231,20 @@ class TestHeartRate:
         check = qc.HeartRate().compute(_ecg_raw(bpm))
         assert check.metrics_["heart_rate_bpm"] == pytest.approx(bpm, rel=0.03)
         assert check.metrics_["channel"] == "ECG"
-        assert check.level == "ok"
+        assert check.metrics_["reliable"]
+        assert check.level == "info"
 
     def test_missed_beats(self):
         """Every third beat missing: the rate stays plausible, the intervals do not."""
-        check = qc.HeartRate().compute(_ecg_raw(72.0, drop_every=3))
+        check = qc.HeartRate(min_bpm=40).compute(_ecg_raw(72.0, drop_every=3))
         assert check.metrics_["irregular_fraction"] > 0.3
-        assert _levels(check)["irregular_fraction"] == "warn"
+        assert not check.metrics_["reliable"] and check.metrics_["heart_rate_bpm"] is None
+        assert _levels(check) == {"reliable": "warn"}  # an ECG channel: check the electrodes
         assert qc.HeartRate().compute(_ecg_raw(72.0)).metrics_["irregular_fraction"] == 0
 
     def test_implausible_rate(self):
         check = qc.HeartRate(max_bpm=60).compute(_ecg_raw(72.0))
-        assert _levels(check)["heart_rate_high"] == "warn"
+        assert _levels(check) == {"heart_rate_high": "warn"}
 
     def test_needs_ecg_or_meg(self, eeg):
         assert "ECG" in qc.HeartRate().not_applicable(eeg)
@@ -253,7 +261,11 @@ class TestHeadMovement:
         )
         assert check.metrics_["max_rotation_deg"] < 0.5
         assert check.metrics_["coil_good_fraction"] == [1.0] * 4
-        assert _levels(check)["max_displacement_mm"] == "warn"  # > 5 mm
+        assert _levels(check)["max_displacement_mm"] == "info"  # no threshold by default
+        assert "fraction_above" not in check.metrics_
+        check = qc.HeadMovement(warn_mm=5).compute(raw)
+        assert _levels(check)["max_displacement_mm"] == "warn"
+        assert 0 < check.metrics_["fraction_above"] < 1
         assert qc.HeadMovement(warn_mm=10).compute(raw).level == "ok"
 
     def test_precomputed_positions(self, chpi_raw):
@@ -350,6 +362,15 @@ class TestInspect:
         report = qc.inspect(fname, checks=[qc.Amplitude()])
         assert report.source == str(fname)
         assert list(report.checks) == ["amplitude"]
+
+    def test_measurements_without_threshold(self, eeg):
+        """Unjudged measurements are "info": reported, but neither flags nor verdicts."""
+        report = qc.inspect(eeg, checks=[qc.Blinks()])
+        (finding,) = report.checks["blinks"].findings_
+        assert finding.level == "info" and "no threshold set" in finding.message
+        assert report.level == "info" and report.flags == []
+        report = qc.inspect(eeg, checks=[qc.Blinks(), qc.Amplitude()])
+        assert report.level == "ok"
 
     def test_custom_checks_and_skips(self, eeg):
         report = qc.inspect(eeg, checks=[qc.Blinks(min_rate=30), qc.HeadMovement()])

@@ -29,7 +29,17 @@ Changed
 * ``origin="auto"`` falls back to (0, 0, 0.04) m with a warning when there
   are no head-shape points (bad channels, interpolation, HeadAlign, Maxwell).
 * MEG presets resample before ZapLine-plus (memory).
-* ``qc.HeartRate`` flags unreliable beat detection (irregular intervals).
+* ``qc.HeartRate`` judges the beat detection by its intervals: when more
+  than 10 % are irregular the rate is not reported (``reliable=False``),
+  a ``"warn"`` with an ECG channel and ``"info"`` with the synthetic ECG.
+* QC checks only give verdicts where the threshold holds for any dataset.
+  Measurements whose acceptable range depends on the population, task or
+  equipment are reported with the new level ``"info"`` (not a flag) unless
+  a threshold is passed: ``HeadMovement(warn_mm)``, ``Muscle(warn_fraction)``,
+  ``Blinks(min_rate)`` (a flat EOG is still flagged), ``HeartRate(min_bpm,
+  max_bpm)``, ``Impedance(warn_kohm)``, ``ChpiSNR(max_drop_db)``,
+  ``EmptyRoom(max_days)`` now default to ``None``. Dataset-level outliers
+  (``inspect_dataset``, ``meu report``) cover them.
 * ``meu.Dataset`` leaves out empty-room recordings.
 * ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
   working around an autoreject indexing error when other channels come

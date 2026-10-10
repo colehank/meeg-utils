@@ -53,14 +53,15 @@ class TestChpiSNR:
     def test_coils_ok(self, chpi):
         check = qc.ChpiSNR().compute(chpi)
         assert len(check.metrics_["mag"]) == 4
-        assert check.level == "ok"
+        assert check.level == "info"
+        assert qc.ChpiSNR(max_drop_db=10).compute(chpi).level == "ok"
         check_check(qc.ChpiSNR(), chpi)
 
     def test_silent_coil(self, chpi):
         raw = chpi.copy()
         with raw.info._unlock():  # the 4th coil "drives" a frequency with no signal
             raw.info["hpi_meas"][0]["hpi_coils"][3]["coil_freq"] = 77.0
-        check = qc.ChpiSNR().compute(raw)
+        check = qc.ChpiSNR(max_drop_db=10).compute(raw)
         assert _levels(check)["mag_coil4_drop_db"] == "warn"
         assert _levels(check)["mag_coil1_drop_db"] == "ok"
 

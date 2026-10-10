@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from .core import Pipeline
     from .qc import QCReport
 
-_LEVEL_COLORS = {"ok": "#2e7d32", "warn": "#ef6c00", "fail": "#c62828"}
+_LEVEL_COLORS = {"info": "#546e7a", "ok": "#2e7d32", "warn": "#ef6c00", "fail": "#c62828"}
 
 
 def build(
