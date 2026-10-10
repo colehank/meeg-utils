@@ -18,7 +18,7 @@ MEG and EEG quality control, preprocessing and epoching on top of
 defaults, QC metrics and figures for every step, BIDS in and out.
 
 .. image:: _static/architecture.svg
-   :alt: Read, acquisition QC, per-run preprocessing, epoching and combining runs
+   :alt: meeg-utils modules: io, qc, steps, Pipeline, presets, epochs, Dataset, report and the meu command
    :width: 100%
 
 .. code-block:: python
