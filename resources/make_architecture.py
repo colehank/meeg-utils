@@ -55,7 +55,7 @@ def text(x, y, s, size=14, weight=400, fill=INK, anchor="middle", mono=False, ex
 
 
 def pill(x, y, s, color, size=12.5, mono=True, fill="white", h=22, pad=9):
-    w = width(s, size, mono) + 2 * pad
+    x, w = round(x), round(width(s, size, mono) + 2 * pad)
     add(
         f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h}" rx="{h / 2}" fill="{fill}" '
         f'stroke="{color}" stroke-width="1.2"/>'
@@ -68,7 +68,7 @@ def card(x, y, w, h, key, number, title, module, libs=None, libs_x=None):
     accent, fill, stroke = THEME[key]
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="{fill}" '
-        f'stroke="{stroke}" stroke-width="1.6"/>'
+        f'stroke="{stroke}" stroke-width="1.5"/>'
     )
     add(f'<circle cx="{x + 28}" cy="{y + 27}" r="12" fill="{accent}"/>')
     text(x + 28, y + 32, str(number), size=13, weight=700, fill="white")
@@ -84,7 +84,7 @@ def card(x, y, w, h, key, number, title, module, libs=None, libs_x=None):
 def step(x, y, w, h, title, sub=None, accent=STEP_STROKE, size=13.5):
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="white" '
-        f'stroke="{accent}" stroke-width="1.4" filter="url(#shadow)"/>'
+        f'stroke="{accent}" stroke-width="1.5"/>'
     )
     if sub:
         text(x + w / 2, y + h / 2 - 2, title, size=size, weight=600)
@@ -96,7 +96,7 @@ def step(x, y, w, h, title, sub=None, accent=STEP_STROKE, size=13.5):
 def chip(x, y, w, h, s, accent):
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{h / 2}" fill="white" '
-        f'stroke="{accent}" stroke-opacity="0.55" stroke-width="1.2"/>'
+        f'stroke="{accent}" stroke-width="1.2"/>'
     )
     text(x + w / 2, y + h / 2 + 4.3, s, size=12.5)
 
@@ -143,9 +143,6 @@ add(
     "<defs>"
     '<marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" '
     f'orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="{LINE}"/></marker>'
-    '<filter id="shadow" x="-10%" y="-20%" width="120%" height="150%">'
-    '<feDropShadow dx="0" dy="1.2" stdDeviation="1.3" flood-color="#1b2b45" flood-opacity="0.13"/>'
-    "</filter>"
     "</defs>"
 )
 add(f'<rect width="{W}" height="{H}" fill="white"/>')
@@ -178,7 +175,7 @@ arrow([(300, 158), (300, 188)])
 # --- 2 acquisition QC --------------------------------------------------------------------------------
 qx, qy, qw, qh = 376, 100, 548, 222
 card(qx, qy, qw, qh, "qc", 2, "Acquisition QC", "meu.qc", libs="MNE · mne-denoise")
-qc_accent = THEME["qc"][0]
+QC_CHIP = "#8cc9cb"  # the QC accent, lightened (solid: no transparency)
 chips = [
     "Flat · clipped · NaN", "Line & narrowband", "Outlying channels",
     "Bridged electrodes", "Impedance", "Blinks · heart · muscle",
@@ -188,7 +185,7 @@ chips = [
 cw, chh, gx, gy = 164, 26, 10, 8
 for i, c in enumerate(chips):
     r, k = divmod(i, 3)
-    chip(qx + 21 + k * (cw + gx), qy + 54 + r * (chh + gy), cw, chh, c, qc_accent)
+    chip(qx + 21 + k * (cw + gx), qy + 54 + r * (chh + gy), cw, chh, c, QC_CHIP)
 ly = qy + qh - 13
 x = qx + 21
 for lvl, col in (("fail", "#c62828"), ("warn", "#e07b00"), ("ok", "#2e7d32"), ("info", "#78859b")):
@@ -205,7 +202,7 @@ card(
 )
 bw, bh, by = 126, 56, ey + 100
 gap = (ew - 40 - 4 * bw) / 3
-xs = [ex + 20 + i * (bw + gap) for i in range(4)]
+xs = [round(ex + 20 + i * (bw + gap)) for i in range(4)]
 step(xs[0], by, bw, bh, "Epoch each run", "events · fixed length", epo, size=13)
 step(xs[1], by, bw, bh, "Align heads", "MEG · HeadAlign", epo, size=13)
 step(xs[2], by, bw, bh, "autoreject", "local: repair or drop", epo, size=13)
@@ -253,7 +250,7 @@ cols = 7
 sw, sh = 166, 54
 x0 = px + 86
 sgap = (px + pw - 20 - x0 - (cols * sw)) / (cols - 1)
-cx = [x0 + i * (sw + sgap) for i in range(cols)]
+cx = [round(x0 + i * (sw + sgap)) for i in range(cols)]
 lanes = {
     "EEG": (560, [
         ("Bridged electrodes", "interpolate small groups"),

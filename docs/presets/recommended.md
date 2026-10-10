@@ -52,6 +52,11 @@ epochs = meu.epochs.combine([ep.fit_transform(run) for run in clean])
 | 3 | `line_noise` | `LineNoise("zapline-plus")` | 同 EEG；50/60 Hz 及其低于 125 Hz 的谐波在 250 Hz 下保留 |
 | 4 | `ica` | `ICA(20, picks="meg", method="infomax", labeler="megnet", threshold=0.8)`，在 1–100 Hz 副本上拟合 | 20 个成分、Infomax、1–100 Hz：MEGnet 的训练条件（同上，mne-icalabel 检查这些条件）；`0.8` 同 EEG。MEGnet 还要求记录至少 60 s |
 
+**为什么 EEG 和 MEG 滤波的时机不同。** 两者各自沿用来源流程的顺序：
+
+- EEG 按 PREP 原文（Bigdely-Shamlo et al., 2015）：先高通、去工频，再做稳健平均参考和坏道检测。PyPREP 的相关性和信噪比判据默认工频已经去掉。
+- MEG 按 MNE-BIDS-Pipeline：先做坏道检测和 SSS（`_03_maxfilter`），再做频率滤波（`_04_frequency_filter`）。在本库中还有一个直接原因：`Maxwell(head_pos="chpi")` 从 cHPI 线圈信号（Neuromag 在 80 Hz 以上）估计头位置，降采样到 250 Hz（奈奎斯特频率 125 Hz）会去掉其中的大部分，所以 SSS 必须在降采样之前。Maxwell 坏道检测自己会在副本上做 40 Hz 低通，事先滤波对它没有帮助。
+
 MEG 与 EEG 同时采集时，MEG 预设只处理 MEG 通道（滤波和工频去除作用于全部通道）；需要分别处理时，用 `S.ByChannelType` 组合两个预设的步骤。
 
 ## 2. 分段阶段（`stage="epochs"`，作用于预处理后的每个 run）
