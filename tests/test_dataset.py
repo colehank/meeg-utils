@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import shutil
 from pathlib import Path
 
 import mne
@@ -126,11 +127,20 @@ def test_meg_runs_aligned_to_average(neuromag_fname, tmp_path):
             run_raw.info["dev_head_t"] = Transform("meg", "head", trans)
         path = BIDSPath(subject="01", task="rest", run=run, datatype="meg", root=root)
         write_raw_bids(run_raw, path, allow_preload=True, format="FIF", verbose=False)
+    # Neuromag calibration files and derivatives inside the dataset are not recordings
+    meg_dir = root / "sub-01" / "meg"
+    shutil.copy(neuromag_fname, meg_dir / "sub-01_acq-crosstalk_meg.fif")
+    (meg_dir / "sub-01_acq-calibration_meg.dat").write_text("")
+    deriv_meg = root / "derivatives" / "other" / "sub-01" / "meg"
+    deriv_meg.mkdir(parents=True)
+    shutil.copy(neuromag_fname, deriv_meg / "sub-01_task-rest_run-01_meg.fif")
+    dataset = meu.Dataset(root)
+    assert [p.run for p in dataset] == ["01", "02"]
+    assert len(meu.qc.dataset.find_recordings(root)) == 2
+
     pre = meu.Pipeline([("filter", S.Filter(1.0, 40.0))])
     epochs = meu.Pipeline([("epoch", S.FixedLengthEpochs(1.0))])
-    result = meu.process_dataset(
-        meu.Dataset(root), tmp_path / "deriv", preprocessing=pre, epochs=epochs
-    )
+    result = meu.process_dataset(dataset, tmp_path / "deriv", preprocessing=pre, epochs=epochs)
     assert not result.failed
     run_files = sorted(result.outputs("epochs"))
     heads = [mne.read_epochs(f, verbose=False).info["dev_head_t"]["trans"] for f in run_files]

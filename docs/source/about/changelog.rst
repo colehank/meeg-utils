@@ -55,7 +55,10 @@ Changed
   the components ``ICA000 (mag)``); the number of components is capped at
   the rank in ``info`` as well as the data rank (after SSS, ZapLine-plus
   raises the data rank above the SSS rank).
-* ``meu.Dataset`` leaves out empty-room recordings.
+* ``meu.Dataset`` leaves out empty-room recordings; it and
+  ``qc.inspect_dataset`` no longer take the Neuromag cross-talk and
+  calibration files (``*_acq-crosstalk_meg.fif``) or files under
+  ``derivatives/`` for recordings.
 * ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
   working around an autoreject indexing error when other channels come
   first (CTF), and writes the result back to all channels.

@@ -238,9 +238,20 @@ def find_recordings(root: str | Path) -> list[BIDSPath]:
         root, suffixes=["meg", "eeg"], extensions=list(reader), ignore_json=True
     )
     return sorted(
-        (p for p in paths if p.split is None or p.split == "01"),
+        (
+            p
+            for p in paths
+            if (p.split is None or p.split == "01")
+            and p.acquisition not in _MAXWELL_FILES
+            and "derivatives" not in p.fpath.relative_to(root).parts
+        ),
         key=lambda p: str(p.fpath),
     )
+
+
+#: Neuromag cross-talk and fine-calibration files, stored as ``*_acq-crosstalk_meg.fif``
+#: and ``*_acq-calibration_meg.dat`` next to the recordings; they are not recordings.
+_MAXWELL_FILES = ("crosstalk", "calibration")
 
 
 def find_outliers(
