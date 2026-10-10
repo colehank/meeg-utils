@@ -46,6 +46,7 @@ Installed automatically:
 * **mne-denoise** (>=0.0.3) - ZapLine and ZapLine-plus line-noise removal
 * **pyprep** (>=0.9) - PREP bad-channel detection for EEG
 * **mne-icalabel** (>=0.10) and **onnxruntime** - ICLabel / MEGnet component labels
+* **autoreject** (>=0.5.1) - epoch rejection and repair
 * **scikit-learn** (>=1.5) - estimator conventions (``clone``, parameters)
 * **pyyaml**, **joblib**, **loguru**
 
@@ -57,3 +58,7 @@ Verify Installation
    import meeg_utils as meu
    print(meu.__version__)
    print(meu.presets.available())
+
+.. code-block:: bash
+
+   meu --help

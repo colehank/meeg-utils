@@ -19,6 +19,18 @@ frequency come from ``channels.tsv`` and ``*_eeg.json`` / ``*_meg.json``.
    raw = meu.io.read("bids/sub-01/eeg/sub-01_task-rest_eeg.vhdr")
    meu.io.detect_system(raw)   # "eeg", "neuromag", "ctf", "kit", ...
 
+Check the recording
+-------------------
+
+:mod:`meeg_utils.qc` measures how well the recording was made, before any
+processing (see :doc:`qc`):
+
+.. code-block:: python
+
+   report = meu.qc.inspect(raw)
+   print(report)        # verdicts, and the findings that need attention
+   report.flags         # "warn" / "fail" findings, worst first
+
 Build a pipeline
 ----------------
 
@@ -42,7 +54,8 @@ Or start from a preset (see :doc:`presets`):
 
 .. code-block:: python
 
-   pipe = meu.Pipeline.preset("had-meeg", datatype="eeg")
+   pipe = meu.Pipeline.preset("eeg-erp")                     # recommended EEG pipeline
+   pipe = meu.Pipeline.preset("meg-erp", system="neuromag")  # MEG, per acquisition system
 
 Process
 -------
@@ -78,6 +91,19 @@ Correct the ICA labels after looking at the components, then transform again:
    pipe["ica"].relabel({3: "eye blink", 7: "brain"})
    clean = pipe.transform(raw)
 
+Epoch
+-----
+
+Epoching is a second pipeline applied to each preprocessed run; the runs
+are then combined (channel sets unified, MEG head positions checked):
+
+.. code-block:: python
+
+   pre = meu.Pipeline.preset("eeg-erp")
+   clean_runs = [pre.fit_transform(run) for run in runs]   # refitted on every run
+   ep = meu.Pipeline.preset("eeg-erp", stage="epochs", event_id=["target", "standard"])
+   epochs = meu.epochs.combine([ep.fit_transform(run) for run in clean_runs])
+
 Save
 ----
 
@@ -95,6 +121,20 @@ configuration alone can be shared as YAML:
 
    pipe.to_yaml("pipeline.yaml")
    pipe = meu.Pipeline.from_yaml("pipeline.yaml")
+
+A whole dataset
+---------------
+
+:func:`meeg_utils.process_dataset` does all of the above for every run of a
+BIDS dataset, resumes interrupted batches and collects failures (see
+:doc:`batch_processing`); the command line does the same (see :doc:`cli`):
+
+.. code-block:: bash
+
+   meu qc bids/ --out qc/
+   meu run --preset eeg-erp --epochs --option "event_id=[target, standard]" \
+       --sources bids/ --out bids/derivatives/meu
+   meu report bids/derivatives/meu
 
 Logging
 -------

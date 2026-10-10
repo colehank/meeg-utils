@@ -13,13 +13,21 @@ Automatically runs on every push and pull request to ``main``, ``master``, or ``
 
 **Jobs:**
 
-1. **lint** - Ruff linter and formatter checks
+1. **lint** - Ruff linter (run ``ruff format --check`` locally as well)
 2. **type-check** - MyPy static type checking
 3. **security** - Bandit security analysis
 4. **test** - Pytest with coverage (matrix: Python 3.11/3.12 × Ubuntu/macOS/Windows)
 5. **docs** - Docstring coverage with interrogate
 
 Configuration: ``.github/workflows/ci.yml``
+
+Documentation Workflow
+~~~~~~~~~~~~~~~~~~~~~~
+
+Builds the Sphinx documentation on every push and pull request to
+``main``; pushes to ``main`` publish it to GitHub Pages.
+
+Configuration: ``.github/workflows/docs.yml``
 
 Release Workflow
 ~~~~~~~~~~~~~~~~

@@ -13,7 +13,7 @@ meeg-utils Documentation
    :target: https://github.com/astral-sh/ruff
    :alt: Code style: ruff
 
-MEG and EEG quality control, preprocessing and analysis on top of
+MEG and EEG quality control, preprocessing and epoching on top of
 `MNE-Python <https://mne.tools>`_. Every step is a small, scikit-learn style
 estimator with explicit parameters; steps compose into pipelines that record
 what they did, measure how well it worked, and draw figures to check it.
@@ -41,10 +41,22 @@ Highlights
   ``clone``, YAML configurations.
 * **Data integrity**: no silent channel drops or time shifts; contract
   checks for every step.
-* **Quality control**: QC metrics and figures for every step.
-* **BIDS first**: sidecars are read, results are written as BIDS
-  derivatives with full provenance.
-* **Presets** from published pipelines, with every deviation documented.
+* **Acquisition QC** (:doc:`user_guide/qc`): how well a recording was made
+  (bridged electrodes, flat channels, head movement, SQUID jumps, empty
+  room, BIDS metadata, ...), with dataset-level outlier detection.
+* **Processing QC**: metrics and figures for every step.
+* **Presets** (:doc:`user_guide/presets`): recommended EEG and MEG
+  pipelines with every parameter traced to a published default, and the
+  HAD-MEEG pipeline with its known issues fixed.
+* **BIDS first**: sidecars are read, whole datasets are processed run by run
+  and combined per session, results are written as BIDS derivatives with
+  full provenance.
+* **Command line**: ``meu qc``, ``meu run``, ``meu preset``, ``meu report``
+  (:doc:`user_guide/cli`).
+
+Analysis (ERP/ERF measures, spectra, time-frequency, group statistics) is
+planned; the outputs are plain MNE objects, so MNE's own analysis tools
+apply directly.
 
 .. toctree::
    :maxdepth: 2

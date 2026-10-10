@@ -24,29 +24,53 @@ Layout
 .. code-block:: text
 
    tests/
-   ├── conftest.py               # small_raw: tiny EEG with first_samp, meas_date, annotations
+   ├── conftest.py               # small_raw, eeg, eeg_bad, neuromag fixtures
+   ├── simulation.py             # make_eeg, make_erp, make_chpi, make_opm
    ├── test_batch.py             # meu.process
+   ├── test_dataset.py           # meu.Dataset and process_dataset
+   ├── test_cli.py               # the meu command
    ├── test_logging.py
    ├── test_core/                # Step and Pipeline (toy steps in _steps.py)
    ├── test_io/                  # reading, system detection, derivatives
-   └── test_steps/
-       ├── conftest.py           # make_eeg() simulation, Neuromag test recording
-       ├── test_steps.py         # each step: contract + scientific checks
-       ├── test_head.py          # HeadAlign against forward-simulated data
-       └── test_presets.py       # preset configuration and end-to-end runs
+   ├── test_qc/                  # acquisition checks, dataset summary, reports
+   ├── test_epochs/              # Epoch, AutoReject, combining runs, epochs presets
+   └── test_steps/               # one file per step family (Maxwell, HFC, ...),
+                                 # contract + scientific checks; presets end to end
+
+Simulations
+-----------
+
+``tests/simulation.py`` builds data whose right answer is known:
+
+``make_eeg(line=True, blinks=True, bad=False, seed=0)``
+   60 s of 32-channel EEG at 250 Hz: spatially smooth 1/f background,
+   posterior alpha, frontal blinks with an EOG channel, 50 Hz line noise,
+   and optionally a noisy (C4) and a flat (P8) channel.
+``make_erp(n_trials=60, erp=True)``
+   an oddball experiment with a P300 to the targets.
+``make_chpi(fname)``
+   the Neuromag test recording with cHPI coil signals and a known head
+   movement added.
+``make_opm(axes=3)``
+   an OPM array (QuSpin coils) for HFC.
 
 Fixtures
 --------
 
-``make_eeg(line=True, blinks=True, bad=False, seed=0)`` (``tests/test_steps/conftest.py``)
-   60 s of 32-channel EEG at 250 Hz: spatially smooth 1/f background,
-   posterior alpha, frontal blinks with an EOG channel, 50 Hz line noise,
-   and optionally a noisy (C4) and a flat (P8) channel.
-
+``eeg`` / ``eeg_bad``
+   ``make_eeg()`` without and with the bad channels.
 ``neuromag``
    10 s of MNE's Neuromag test recording (306 MEG + 60 EEG), downloaded once
    with a pinned URL and SHA-256 hash into the pooch cache; tests that need
    it are skipped when offline.
+
+Real data
+---------
+
+Simulations cannot show everything (channel order, signal levels, missing
+head shapes, memory use). ``docs/validation/`` records runs on public
+datasets, what they revealed and how to reproduce them; they are not part
+of the test suite because of the download size.
 
 Testing a custom step
 ---------------------

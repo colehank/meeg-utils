@@ -8,7 +8,7 @@
 [![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
 [![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
 
-MEG and EEG quality control, preprocessing and analysis on top of
+MEG and EEG quality control, preprocessing and epoching on top of
 [MNE-Python](https://mne.tools). Every step is a small, scikit-learn style
 estimator with explicit parameters; steps compose into pipelines that record
 what they did, measure how well it worked, and draw figures to check it.
@@ -58,10 +58,11 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
   narrowband noise, muscle, blink and heart rate (is the EOG/ECG working?),
   MEG head movement, HPI coils and their SNR, SQUID jumps, the session's
   empty room, digitization, event counts, photodiode delay and jitter,
-  BIDS metadata against the data. Thresholds
-  are documented with their source; `meu.qc.inspect_dataset` flags
-  outlying recordings across a dataset; `meu.report.build` writes HTML
-  reports.
+  BIDS metadata against the data. Problems by definition are flagged;
+  measurements whose acceptable range depends on the dataset (head
+  movement, blink rate, ...) are reported unless you set a threshold, and
+  `meu.qc.inspect_dataset` flags recordings that stand out in the dataset;
+  `meu.report.build` writes HTML reports.
 - **Processing quality control**: `qc_` metrics on every step and `plot()`
   figures (spectra before/after, bad-channel scores, sensor maps, ICA
   components, head positions, ...).
@@ -93,12 +94,16 @@ pip install meeg-utils
 
 Python 3.11+. Version 0.2.0 replaced the 0.1 `PreprocessingPipeline` and
 `BatchPreprocessingPipeline` classes with the step/pipeline API above.
+Analysis (ERP/ERF measures, spectra, time-frequency, group statistics) is
+planned; until then, the outputs are plain MNE objects for MNE's own tools.
 
 ## Documentation
 
 - [User guide and API reference](https://colehank.github.io/meeg-utils/)
 - [Design notes](docs/design/architecture.md) (in Chinese): scope, constraints,
   roadmap.
+- [Validation on real data](docs/validation/ds007353-sub-01.md) (in Chinese):
+  QC and all presets on HAD-MEEG (OpenNeuro ds007353), CTF MEG and EEG.
 
 ## Development
 

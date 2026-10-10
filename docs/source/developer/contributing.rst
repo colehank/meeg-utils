@@ -189,7 +189,7 @@ Use NumPy-style docstrings:
        highpass: float = 0.1,
        lowpass: float = 100.0,
    ) -> BaseRaw:
-       \"\"\"Process MEG/EEG data with filtering.
+       """Process MEG/EEG data with filtering.
 
        Parameters
        ----------
@@ -208,16 +208,19 @@ Use NumPy-style docstrings:
        Examples
        --------
        >>> raw_filtered = process_data(raw, highpass=1.0, lowpass=50.0)
-       \"\"\"
+       """
 
 Testing Guidelines
 ~~~~~~~~~~~~~~~~~~
 
-* One test file per source file
+* Run the real scientific code, without mocks, on simulated data whose
+  right answer is known (see :doc:`testing`)
+* Every new step passes :func:`meeg_utils.testing.check_step`, every new
+  QC check :func:`meeg_utils.testing.check_check`
 * Use descriptive test names: ``test_<what>_<condition>``
 * Use fixtures for common test data
-* Mock expensive operations (trust library implementations)
-* Aim for >80% code coverage
+* Document the source of every default parameter (a paper, or the default
+  of the library it wraps); where there is none, say so
 
 Reporting Issues
 ----------------

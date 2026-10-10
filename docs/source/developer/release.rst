@@ -31,28 +31,22 @@ Edit ``pyproject.toml``:
 2. Update Changelog
 ~~~~~~~~~~~~~~~~~~~
 
-Edit ``CHANGELOG.rst`` (or create if doesn't exist):
+Changes are collected under ``[Unreleased]`` in
+``docs/source/about/changelog.rst`` while they are made. At release, rename
+that section to the version and date and start a new, empty
+``[Unreleased]`` section:
 
 .. code-block:: rst
 
-   Changelog
-   =========
+   [Unreleased]
+   ------------
 
-   [0.2.0] - 2026-03-02
-   ---------------------
-
-   Added
-   ~~~~~
-   * New feature X
-   * New feature Y
-
-   Changed
-   ~~~~~~~
-   * Improved performance of Z
+   [0.2.1] - 2026-11-02
+   --------------------
 
    Fixed
    ~~~~~
-   * Bug in component A
+   * ...
 
 3. Run Tests
 ~~~~~~~~~~~~
@@ -69,6 +63,7 @@ Edit ``CHANGELOG.rst`` (or create if doesn't exist):
    uv run ruff check src/ tests/
    uv run mypy src/
    uv run bandit -r src/ -c pyproject.toml
+   uv run interrogate src/ --config pyproject.toml
 
 4. Build Documentation
 ~~~~~~~~~~~~~~~~~~~~~~
@@ -85,7 +80,7 @@ Edit ``CHANGELOG.rst`` (or create if doesn't exist):
 
 .. code-block:: bash
 
-   git add pyproject.toml CHANGELOG.rst
+   git add pyproject.toml docs/source/about/changelog.rst
    git commit -m "chore: bump version to 0.2.0"
    git push origin main
 
@@ -146,7 +141,7 @@ If automated release fails:
 
    gh release create v0.2.0 \
        --title "Release 0.2.0" \
-       --notes "See CHANGELOG.rst for details" \
+       --notes "See the changelog for details" \
        dist/*
 
 Pre-release

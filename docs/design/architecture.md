@@ -304,23 +304,21 @@ QC 结果可以接到预处理里，例如 `S.BridgedElectrodes`（`interpolate_
 
 ## 8. 输出与可追溯性
 
-- 遵循 BIDS derivatives：`derivatives/meeg-utils/sub-XX/[ses-YY/]<datatype>/..._desc-preproc_<datatype>.fif`，附带 `dataset_description.json`（含 `GeneratedBy`）。
-- 每个输出旁边写一份 `_provenance.json`，内容包括流程配置（YAML 等价物）、各步骤参数、软件版本、耗时、警告和 QC 指标。
-- 中间产物按需保存：`_ica.fif`、`_desc-badchs_channels.tsv`（符合 BIDS channels.tsv 规范）。
+- 遵循 BIDS derivatives：`<root>/sub-XX/[ses-YY/]<datatype>/..._desc-preproc_<datatype>.fif`（分段后为 `desc-epochs_epo.fif`），根目录有 `dataset_description.json`（含 `GeneratedBy`）。
+- 每个输出旁边写一份同名的 `.json` sidecar，内容包括流程配置（YAML 等价物）、各步骤参数、软件版本、耗时、警告、QC 指标，以及来源文件（`Sources`，合并 run 时列出各 run）。
+- 中间产物（如 ICA 分解）暂不单独保存；需要时用 `pipe["ica"].ica_` 自行保存。
 
 ## 9. 依赖策略
 
 ```
-核心:      mne>=1.13, mne-bids, mne-denoise[mne], pyprep, mne-icalabel, onnxruntime,
-           numpy, scipy, scikit-learn, pandas, joblib, pyyaml, loguru
-[epochs]   autoreject
-[analysis] specparam, mne-connectivity
-[all]      以上全部
+核心:      mne>=1.13.2, mne-bids, mne-denoise[mne]<0.1, pyprep, mne-icalabel, onnxruntime,
+           autoreject, scikit-learn, joblib, pyyaml, loguru
+（计划）[analysis] specparam, mne-connectivity
 ```
 
-预处理的基本步骤（工频、坏道、ICA 自动标注）依赖的库放进核心依赖，保证 `pip install meeg-utils` 后预设流程就能直接运行。mne-denoise 仍是 0.0.x，固定 `<0.1`。meegkit、pandas 已随旧的 `PreprocessingPipeline` 一起在 0.2.0 移除。
+预设流程用到的库（工频、坏道、ICA 自动标注、autoreject）都放进核心依赖，保证 `pip install meeg-utils` 后预设流程就能直接运行；目前没有可选依赖组。mne-denoise 仍是 0.0.x，固定 `<0.1`。meegkit、pandas 已随旧的 `PreprocessingPipeline` 一起在 0.2.0 移除。
 
-用到可选依赖的 Step 在构造时检查依赖是否已安装，缺失时给出明确的安装提示（`pip install meeg-utils[denoise]`）。
+以后的分析模块若引入可选依赖，用到它的 Step 在构造时检查依赖是否已安装，缺失时给出明确的安装提示（如 `pip install meeg-utils[analysis]`）。
 
 ## 10. 测试策略
 
