@@ -21,8 +21,8 @@ class Amplitude(Check):
       the recording are flat channels (disconnected, broken), the rest are
       flat segments (dropouts).
     - **Clipped**: the signal stays at its own maximum or minimum for at
-      least ``min_clip_samples`` samples, which is what an amplifier or
-      SQUID at the end of its range produces.
+      least ``min_clip_duration``, which is what an amplifier or SQUID at
+      the end of its range produces.
     - **Missing**: NaN samples (:func:`mne.preprocessing.annotate_nan`).
 
     Exact repetition is used instead of an amplitude threshold, so no
@@ -34,8 +34,11 @@ class Amplitude(Check):
         Shortest run of identical samples counted as flat, in seconds. The
         default (50 ms) is far longer than chance repetitions of quantized
         noise.
-    min_clip_samples : int
-        Shortest run at the extreme value counted as clipping.
+    min_clip_duration : float
+        Shortest run at the extreme value counted as clipping, in seconds
+        (and at least 4 samples). Quantized data repeat their extreme value
+        by chance for a few samples: up to 3 samples (5 ms) in MNE's sample
+        recording, where a 3-sample threshold flagged a clean channel.
     bad_percent : float
         Percentage of time above which a channel is a flat channel (the
         default of :func:`mne.preprocessing.annotate_amplitude`, 5 %).
@@ -61,16 +64,17 @@ class Amplitude(Check):
         self,
         *,
         min_flat_duration: float = 0.05,
-        min_clip_samples: int = 3,
+        min_clip_duration: float = 0.01,
         bad_percent: float = 5.0,
     ) -> None:
         self.min_flat_duration = min_flat_duration
-        self.min_clip_samples = min_clip_samples
+        self.min_clip_duration = min_clip_duration
         self.bad_percent = bad_percent
 
     def _compute(self, raw: BaseRaw) -> None:
         sfreq = raw.info["sfreq"]
         min_flat = max(2, round(self.min_flat_duration * sfreq))
+        min_clip = max(4, round(self.min_clip_duration * sfreq))
         per_type: dict[str, dict[str, dict[str, float]]] = {}
         flat_channels, clipped_channels, nan_channels = [], [], []
         flat_segments = 0.0
@@ -79,7 +83,7 @@ class Amplitude(Check):
             affected: dict[str, dict[str, float]] = {}
             for name, x in zip((raw.ch_names[p] for p in picks), data, strict=True):
                 nan = float(np.isnan(x).mean() * 100)
-                flat, clip = _plateau_percent(x, min_flat, self.min_clip_samples)
+                flat, clip = _plateau_percent(x, min_flat, min_clip)
                 if flat > self.bad_percent:
                     flat_channels.append(name)
                     clip = 0.0  # a flat channel sits at its own extreme everywhere

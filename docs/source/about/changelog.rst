@@ -44,6 +44,13 @@ Changed
   (``find_bad_by_PSD``), which is not part of PREP and flags frontal
   channels for their blink power (three in MNE's sample EEG); ``psd=True``
   turns it on.
+* ``qc.SquidJumps`` requires a lasting level change (200 ms windows,
+  larger than three times the local spread): on MNE's sample recording
+  the 50 ms windows took noise bursts and 30 ms glitches for jumps (16 in
+  7 channels; now 8, all real steps, in MEG 2313).
+* ``qc.Amplitude`` counts clipping from ``min_clip_duration`` (10 ms, at
+  least 4 samples) instead of 3 samples, which quantized data reach at
+  their peaks by chance.
 * ``meu.Dataset`` leaves out empty-room recordings.
 * ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
   working around an autoreject indexing error when other channels come

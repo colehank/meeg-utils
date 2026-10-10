@@ -266,7 +266,7 @@ check.plot()                         # QC 检查项同样如此
 
 | 检查项 | 模态 | 基于 | 判定（默认） | 图 |
 |---|---|---|---|---|
-| `Amplitude` 平坦/削顶/缺失 | EEG/MEG | 连续相同样本、停在极值的平台、NaN（`annotate_nan` 同义） | 平坦超过 5% 时间的通道（`annotate_amplitude` 默认）、任何削顶、任何 NaN → warn | 每通道百分比 |
+| `Amplitude` 平坦/削顶/缺失 | EEG/MEG | 连续相同样本、停在极值至少 10 ms 的平台、NaN（`annotate_nan` 同义） | 平坦超过 5% 时间的通道（`annotate_amplitude` 默认）、任何削顶、任何 NaN → warn | 每通道百分比 |
 | `Bridging` 电极桥接 | EEG | `compute_bridged_electrodes`（MNE 默认参数） | 任何桥接 → warn；桥接组大于 4 个电极（`interpolate_bridged_electrodes` 的上限）→ fail | `plot_bridged_electrodes`、电距离分布 |
 | `Impedance` 阻抗 | EEG | BrainVision 头文件（`raw.impedances`）或传入的值（如 `read_impedances_curry`） | 只报告（`warn_kohm` 可设；Brain Products 有源电极建议上限 25 kΩ，无源电极常用 5–10 kΩ） | 每电极阻抗 |
 | `OutlierChannels` 离群通道 | EEG/MEG | `find_bad_channels_lof`（Kumaravel et al. 2022） | LOF > 1.5（MNE 默认）→ warn | 每通道 LOF 分数 |
@@ -282,7 +282,7 @@ check.plot()                         # QC 检查项同样如此
 
 | 检查项 | 模态 | 基于 | 判定（默认） | 图 |
 |---|---|---|---|---|
-| `SquidJumps` SQUID 跳变 | MEG（SQUID 系统） | FieldTrip 跳变检测：9 阶中值滤波后求导、按时间 z 分数化 | z > 20（FieldTrip 教程的设置）且信号电平持续改变（区别于尖峰）→ warn | 受影响通道在首次跳变附近的波形 |
+| `SquidJumps` SQUID 跳变 | MEG（SQUID 系统） | FieldTrip 跳变检测：9 阶中值滤波后求导、按时间 z 分数化 | z > 20（FieldTrip 教程的设置）且前后各 200 ms 的电平持续改变、超过局部波动的 3 倍（区别于尖峰、噪声爆发和短暂毛刺）→ warn | 受影响通道在首次跳变附近的波形 |
 | `ChpiSNR` cHPI 信噪比 | MEG（Neuromag，有 cHPI） | `compute_chpi_snr` | 每个线圈的中位 SNR 比各线圈中位数低多少 dB，只报告（无公认阈值，`max_drop_db` 可设） | `plot_chpi_snr` |
 | `EmptyRoom` 空房间记录 | MEG（SQUID 系统） | BIDS `find_empty_room` 或传入；Welch PSD | 空房间中的离群传感器（log 噪声的修正 z > 3.5）→ warn；与记录相隔的天数、噪声底（20–100 Hz，去工频谐波）和记录高出空房间的 dB 只报告 | 记录与空房间的频谱 |
 | `BidsMetadata` BIDS 描述 | 通用（BIDS） | sidecar JSON、`channels.tsv`、数据文件 | 采样率不符 → fail；时长、各类通道数、`channels.tsv` 通道名不符 → warn；缺 `PowerLineFrequency` 等 → warn | — |

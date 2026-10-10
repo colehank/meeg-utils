@@ -29,16 +29,22 @@ class SquidJumps(Check):
     Follows FieldTrip's jump detection (``ft_artifact_zvalue`` as configured
     in its artifact-rejection tutorial): each channel is median filtered
     (order 9), differentiated, and the absolute derivative z-scored over
-    time; values above ``cutoff`` (20) are jumps. A jump must also shift the
-    signal's level, which tells it from a spike.
+    time; values above ``cutoff`` (20) are candidates. A jump must also
+    shift the signal's level for good, which tells it from a spike, a burst
+    of noise or a brief glitch: the median of the 200 ms after it must differ
+    from that of the 200 ms before it (leaving 10 ms on either side), by at
+    least ``min_shift`` of the step and by more than three times the robust
+    spread (1.4826 MAD) of the signal in those windows.
 
     Parameters
     ----------
     cutoff : float
         z-score threshold of the derivative (FieldTrip tutorial: 20).
     min_shift : float
-        A jump must change the median level 50 ms after it, compared with
-        50 ms before, by at least this fraction of its size.
+        A jump must change the median level of the 200 ms after it, compared
+        with the 200 ms before, by at least this fraction of its size. (With
+        50 ms windows, transients and noise bursts lasting about 100 ms in
+        MNE's sample recording passed as jumps.)
 
     Attributes
     ----------
@@ -64,7 +70,8 @@ class SquidJumps(Check):
         from scipy.signal import medfilt  # type: ignore[import-untyped]
 
         sfreq = raw.info["sfreq"]
-        half = max(1, round(0.05 * sfreq))
+        half = max(1, round(0.2 * sfreq))
+        guard = max(1, round(0.01 * sfreq))
         picks = mne.pick_types(raw.info, meg=True, ref_meg=False, exclude="bads")
         jumps: dict[str, list[int]] = {}
         snippets: dict[str, tuple[np.ndarray, np.ndarray]] = {}
@@ -78,15 +85,20 @@ class SquidJumps(Check):
             candidates = np.flatnonzero((d - d.mean()) / std > self.cutoff)
             found = []
             for i in _first_of_runs(candidates):
-                before = np.median(filtered[max(0, i - half) : i])
-                after = np.median(filtered[i + 1 : i + 1 + half])
+                if i < half or i + 1 + half > len(filtered):
+                    continue
+                pre = filtered[i - half : i - guard]
+                post = filtered[i + 1 + guard : i + 1 + half]
+                before, after = np.median(pre), np.median(post)
+                shift = abs(after - before)
+                spread = 1.4826 * np.median(np.abs(np.concatenate([pre - before, post - after])))
                 size = np.abs(filtered[i + 1] - filtered[i])
-                if i >= half and abs(after - before) >= self.min_shift * size:
+                if shift >= self.min_shift * size and shift > 3 * spread:
                     found.append(int(i))
             if found:
                 name = raw.ch_names[pick]
                 jumps[name] = found
-                lo, hi = max(0, found[0] - 10 * half), min(len(x), found[0] + 10 * half)
+                lo, hi = max(0, found[0] - 3 * half), min(len(x), found[0] + 3 * half)
                 snippets[name] = (
                     (np.arange(lo, hi) / sfreq).astype(np.float32),
                     x[lo:hi].astype(np.float32),

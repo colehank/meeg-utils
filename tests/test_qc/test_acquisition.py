@@ -31,6 +31,16 @@ class TestSquidJumps:
             raw._data[i, int(3 * sfreq) :] += 50 * raw._data[i].std()  # lasting step
         spike = raw.ch_names.index("MEG 0122")
         raw._data[spike, int(5 * sfreq)] += 50 * raw._data[spike].std()  # one sample
+        # a burst of three 30 Hz cycles and a 40 ms glitch, as in MNE's sample
+        # recording: large steps in the signal, but its level does not change
+        burst = raw.ch_names.index("MEG 0132")
+        t = np.arange(int(0.1 * sfreq)) / sfreq
+        start = int(6 * sfreq)
+        raw._data[burst, start : start + len(t)] += (
+            50 * raw._data[burst].std() * np.sin(2 * np.pi * 30 * t)
+        )
+        glitch = raw.ch_names.index("MEG 0142")
+        raw._data[glitch, start : start + int(0.04 * sfreq)] += 50 * raw._data[glitch].std()
         check = qc.SquidJumps().compute(raw)
         assert sorted(check.metrics_["channels"]) == jump_channels
         assert check.metrics_["times"][0] == pytest.approx(3.0, abs=0.01)

@@ -86,6 +86,16 @@ class TestAmplitude:
         assert check.level == "ok"
         assert not any(check.metrics_["channels"].values())
 
+    def test_quantized_peak_is_not_clipping(self, eeg):
+        """Quantized data can repeat their extreme for a few samples by chance (3 samples
+        in MNE's sample recording); that is not saturation."""
+        i = eeg.ch_names.index("Cz")
+        peak = eeg._data[i].max() * 1.5
+        eeg._data[i, 2000:2003] = peak
+        assert qc.Amplitude().compute(eeg).metrics_["clipped_channels"] == []
+        eeg._data[i, 2000:2010] = peak  # 40 ms at 250 Hz
+        assert qc.Amplitude().compute(eeg).metrics_["clipped_channels"] == ["Cz"]
+
 
 class TestBridging:
     def test_finds_bridged_pairs(self):
