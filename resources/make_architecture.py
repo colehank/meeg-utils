@@ -14,7 +14,7 @@ import sys
 from html import escape
 from pathlib import Path
 
-W, H = 1400, 360
+W, H = 1400, 384
 SANS = "'Helvetica Neue', Helvetica, Arial, Inter, sans-serif"
 MONO = "'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace"
 INK, MUTED, FAINT, LINE = "#1d1d1f", "#6e6e73", "#aeaeb2", "#c7c7cc"
@@ -42,10 +42,11 @@ def node(x, y, title, module):
     text(x, y + 30, module, size=12.5, fill=ACCENT, mono=True)
 
 
-def lane(x0, x1, y, label, steps):
+def lane(x0, x1, y, label, preset, steps):
     """A lane under the preprocessing stage: a thin line and its steps as plain words."""
     add(f'<path d="M{x0},{y} H{x1}" stroke="{LINE}" stroke-width="1.5"/>')
-    text(x0 - 14, y + 4, label, size=12, weight=600, fill=MUTED, anchor="end")
+    text(x0 - 14, y + 1, label, size=12, weight=600, fill=MUTED, anchor="end")
+    text(x0 - 14, y + 16, preset, size=10, fill=ACCENT, anchor="end", mono=True)
     n = len(steps)
     for i, (name, cls) in enumerate(steps):
         x = x0 + (x1 - x0) * (i + 0.5) / n
@@ -90,7 +91,7 @@ for x, s in zip(
 
 # the two lanes
 x0, x1 = 236, 1280
-lane(x0, x1, 200, "EEG", [
+lane(x0, x1, 200, "EEG", "eeg-erp", [
     ("Bridged electrodes", "BridgedElectrodes"),
     ("High-pass", "Filter"),
     ("Line noise", "LineNoise"),
@@ -99,7 +100,7 @@ lane(x0, x1, 200, "EEG", [
     ("Re-reference", "Reference"),
     ("ICA · ICLabel", "ICA"),
 ])  # fmt: skip
-lane(x0, x1, 290, "MEG", [
+lane(x0, x1, 290, "MEG", "meg-erp", [
     ("Bad channels", "BadChannels"),
     ("SSS", "Maxwell"),
     ("High-pass", "Filter"),
@@ -114,7 +115,11 @@ add(
 )
 add(f'<path d="M{x0 - 60},200 H{x0 - 44}" stroke="{LINE}" stroke-width="1.5"/>')
 
-text(W / 2, H - 14, "Presets are ordinary pipelines: change, replace or remove any step.",
+text((x0 + x1) / 2, 336,
+     "Neuromag shown. CTF: Interpolate + Reference(ctf_grade=3) instead of SSS · "
+     "KIT: Regression instead of bad channels and SSS",
+     size=11, fill=MUTED)  # fmt: skip
+text(W / 2, H - 12, "Presets are ordinary pipelines: change, replace or remove any step.",
      size=12, fill=FAINT)  # fmt: skip
 
 add("</svg>")

@@ -1,7 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 360" width="1400" height="360" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 384" width="1400" height="384" role="img" aria-labelledby="title desc">
 <title id="title">meeg-utils: read, check, preprocess, epoch</title>
 <desc id="desc">Recordings are read with their BIDS sidecars (meu.io), checked by the acquisition QC (meu.qc), preprocessed run by run in an EEG or an MEG lane (meu.steps), and epoched and combined per session (meu.epochs).</desc>
-<rect width="1400" height="360" fill="white"/>
+<rect width="1400" height="384" fill="white"/>
 <path d="M120,92 H1280" stroke="#1d1d1f" stroke-width="2"/>
 <circle cx="120" cy="92" r="7" fill="white" stroke="#1d1d1f" stroke-width="2"/>
 <text x="120.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="20" font-weight="600" fill="#1d1d1f" text-anchor="middle">Read</text>
@@ -20,7 +20,8 @@
 <text x="760.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">one pipeline per run</text>
 <text x="1280.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">runs combined per session</text>
 <path d="M236,200 H1280" stroke="#c7c7cc" stroke-width="1.5"/>
-<text x="222.0" y="204.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">EEG</text>
+<text x="222.0" y="201.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">EEG</text>
+<text x="222.0" y="216.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#0a66d6" text-anchor="end">eeg-erp</text>
 <circle cx="310.6" cy="200" r="3.5" fill="#1d1d1f"/>
 <text x="310.6" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Bridged electrodes</text>
 <text x="310.6" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">BridgedElectrodes</text>
@@ -43,7 +44,8 @@
 <text x="1205.4" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">ICA · ICLabel</text>
 <text x="1205.4" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">ICA</text>
 <path d="M236,290 H1280" stroke="#c7c7cc" stroke-width="1.5"/>
-<text x="222.0" y="294.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">MEG</text>
+<text x="222.0" y="291.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">MEG</text>
+<text x="222.0" y="306.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#0a66d6" text-anchor="end">meg-erp</text>
 <circle cx="323.0" cy="290" r="3.5" fill="#1d1d1f"/>
 <text x="323.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Bad channels</text>
 <text x="323.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">BadChannels</text>
@@ -64,5 +66,6 @@
 <text x="1193.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">ICA</text>
 <path d="M760,156 V170 H176 V290 H192" fill="none" stroke="#c7c7cc" stroke-width="1.5"/>
 <path d="M176,200 H192" stroke="#c7c7cc" stroke-width="1.5"/>
-<text x="700.0" y="346.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#aeaeb2" text-anchor="middle">Presets are ordinary pipelines: change, replace or remove any step.</text>
+<text x="758.0" y="336.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#6e6e73" text-anchor="middle">Neuromag shown. CTF: Interpolate + Reference(ctf_grade=3) instead of SSS · KIT: Regression instead of bad channels and SSS</text>
+<text x="700.0" y="372.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#aeaeb2" text-anchor="middle">Presets are ordinary pipelines: change, replace or remove any step.</text>
 </svg>
