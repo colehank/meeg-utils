@@ -279,8 +279,10 @@ class BadChannels(Step):
             return_scores=True,
             verbose=False,
         )
-        noisy_scores = np.nanmax(scores["scores_noisy"], axis=1)
-        limits = np.nanmax(scores["limits_noisy"], axis=1)
+        with warnings.catch_warnings():  # channels already marked bad have no scores
+            warnings.simplefilter("ignore", RuntimeWarning)
+            noisy_scores = np.nanmax(scores["scores_noisy"], axis=1)
+            limits = np.nanmax(scores["limits_noisy"], axis=1)
         for ch_type in np.unique(scores["ch_types"]):
             sel = np.asarray(scores["ch_types"]) == ch_type
             self.scores_[f"Maxwell {ch_type}"] = {

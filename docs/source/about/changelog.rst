@@ -51,6 +51,10 @@ Changed
 * ``qc.Amplitude`` counts clipping from ``min_clip_duration`` (10 ms, at
   least 4 samples) instead of 3 samples, which quantized data reach at
   their peaks by chance.
+* ``steps.ICA``: ``plot("components")`` failed on Neuromag data (MNE titles
+  the components ``ICA000 (mag)``); the number of components is capped at
+  the rank in ``info`` as well as the data rank (after SSS, ZapLine-plus
+  raises the data rank above the SSS rank).
 * ``meu.Dataset`` leaves out empty-room recordings.
 * ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
   working around an autoreject indexing error when other channels come

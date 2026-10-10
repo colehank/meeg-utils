@@ -339,6 +339,28 @@ class TestICA:
         step = S.ICA(n_components=5, picks="eeg", labeler=None, max_iter=100).fit(neuromag)
         assert step.ica_.ch_names == neuromag.copy().pick("eeg", exclude="bads").ch_names
 
+    @pytest.mark.filterwarnings("ignore:FastICA did not converge")
+    def test_neuromag_components_figure(self, neuromag: BaseRaw) -> None:
+        """MNE titles Neuromag components "ICA000 (mag)"; the labels are still added."""
+        step = S.ICA(n_components=5, picks="meg", method="fastica", labeler=None, max_iter=50)
+        step.fit(neuromag)
+        figs = step.plot("components")["components"]
+        titles = [ax.get_title() for fig in np.atleast_1d(figs) for ax in fig.axes]
+        assert any(t.startswith("ICA000") and "\n" in t for t in titles)
+        import matplotlib.pyplot as plt
+
+        plt.close("all")
+
+    @pytest.mark.filterwarnings("ignore:FastICA did not converge")
+    def test_rank_after_sss(self, neuromag: BaseRaw) -> None:
+        """After SSS the data rank can exceed the SSS rank (a later step adds signal outside
+        the SSS subspace, as ZapLine does); ICA is capped at the rank in info."""
+        meg = neuromag.copy().pick("meg")
+        sss = S.Maxwell(cross_talk=None, calibration=None).fit_transform(meg)
+        sss._data += np.random.default_rng(0).normal(0, 1e-15, sss._data.shape)
+        step = S.ICA(n_components=200, method="fastica", labeler=None, max_iter=20).fit(sss)
+        assert step.qc_["rank"] == sum(mne.compute_rank(sss, rank="info").values())
+
 
 # ----------------------------------------------------------------------
 # End to end

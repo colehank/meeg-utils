@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import re
+import warnings
 from typing import Any, ClassVar, Self
 
 import mne
@@ -141,7 +143,13 @@ class ICA(Step):
         if self.fit_l_freq is not None or h_freq is not None:
             fit_raw.filter(self.fit_l_freq, h_freq, verbose=False)
 
-        rank = int(sum(mne.compute_rank(fit_raw, rank=None, verbose=False).values()))
+        # The data rank can exceed the rank in info (after SSS, steps such as ZapLine
+        # remove patterns estimated in sensor space); ICA cannot use more than either.
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            data_rank = mne.compute_rank(fit_raw, rank=None, verbose=False)
+        info_rank = mne.compute_rank(fit_raw, rank="info", verbose=False)
+        rank = int(sum(min(r, info_rank.get(t, r)) for t, r in data_rank.items()))
         n_components: int | float = self.n_components
         if isinstance(n_components, int | np.integer) and n_components > rank:
             self.qc_["note"] = f"n_components lowered from {n_components} to the data rank {rank}."
@@ -225,9 +233,10 @@ class ICA(Step):
         for fig in figs if isinstance(figs, list) else [figs]:
             for ax in fig.axes:
                 title = ax.get_title()
-                if not title.startswith("ICA"):
+                match = re.match(r"ICA(\d+)", title)  # "ICA003", or "ICA003 (mag)" for Neuromag
+                if match is None:
                     continue
-                idx = int(title.removeprefix("ICA"))
+                idx = int(match.group(1))
                 proba = self.proba_[idx]
                 suffix = "" if np.isnan(proba) else f" {proba:.2f}"
                 ax.set_title(
