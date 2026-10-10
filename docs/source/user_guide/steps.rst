@@ -1,6 +1,11 @@
 Steps and pipelines
 ===================
 
+.. seealso::
+
+   :ref:`tut-pipelines` builds a pipeline step by step and shows what every step draws.
+
+
 Conventions
 -----------
 

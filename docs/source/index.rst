@@ -14,45 +14,33 @@ meeg-utils Documentation
    :alt: Code style: ruff
 
 MEG and EEG quality control, preprocessing and epoching on top of
-`MNE-Python <https://mne.tools>`_. Every step is a small, scikit-learn style
-estimator with explicit parameters; steps compose into pipelines that record
-what they did, measure how well it worked, and draw figures to check it.
+`MNE-Python <https://mne.tools>`_: scikit-learn style steps with documented
+defaults, QC metrics and figures for every step, BIDS in and out.
+
+.. image:: _static/pipeline.png
+   :alt: From raw recordings to preprocessed runs and combined epochs
+   :width: 100%
 
 .. code-block:: python
 
    import meeg_utils as meu
-   from meeg_utils import steps as S
 
-   pipe = meu.Pipeline([
-       ("filter", S.Filter(0.1, 100.0)),
-       ("bads", S.BadChannels()),
-       ("interpolate", S.Interpolate()),
-       ("line_noise", S.LineNoise()),
-       ("reference", S.Reference("average")),
-       ("ica", S.ICA(labeler="iclabel")),
-   ])
-   clean = pipe.fit_transform("bids/sub-01/eeg/sub-01_task-rest_eeg.vhdr")
-   pipe.qc_
+   raw = meu.io.read("bids/sub-01/eeg/sub-01_task-oddball_eeg.vhdr")
+   meu.qc.inspect(raw)                     # how well was it recorded?
+   pipe = meu.Pipeline.preset("eeg-erp")   # every parameter has a cited source
+   clean = pipe.fit_transform(raw)
+   pipe.plot(inst=raw)                     # figures of every step
 
-Highlights
-----------
+New here? Start with the :ref:`tutorials`: they run on real data and show
+what every step does.
 
-* **scikit-learn conventions**: ``fit`` / ``transform``, ``set_params``,
-  ``clone``, YAML configurations.
-* **Data integrity**: no silent channel drops or time shifts; contract
-  checks for every step.
-* **Acquisition QC** (:doc:`user_guide/qc`): how well a recording was made
-  (bridged electrodes, flat channels, head movement, SQUID jumps, empty
-  room, BIDS metadata, ...), with dataset-level outlier detection.
-* **Processing QC**: metrics and figures for every step.
-* **Presets** (:doc:`user_guide/presets`): recommended EEG and MEG
-  pipelines with every parameter traced to a published default, and the
-  HAD-MEEG pipeline with its known issues fixed.
-* **BIDS first**: sidecars are read, whole datasets are processed run by run
-  and combined per session, results are written as BIDS derivatives with
-  full provenance.
-* **Command line**: ``meu qc``, ``meu run``, ``meu preset``, ``meu report``
-  (:doc:`user_guide/cli`).
+- :ref:`tutorials`: :ref:`tut-quickstart`, :ref:`tut-qc`,
+  :ref:`tut-pipelines`, :ref:`tut-epochs`, :ref:`tut-datasets`
+- User guide: :doc:`user_guide/installation`, :doc:`user_guide/steps`,
+  :doc:`user_guide/qc`, :doc:`user_guide/presets`,
+  :doc:`user_guide/batch_processing`, :doc:`user_guide/cli`
+- :doc:`api/index`: every function and parameter
+- :doc:`about/changelog`
 
 Analysis (ERP/ERF measures, spectra, time-frequency, group statistics) is
 planned; the outputs are plain MNE objects, so MNE's own analysis tools
@@ -60,10 +48,17 @@ apply directly.
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
+   :caption: Tutorials
+
+   auto_tutorials/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
    :caption: User Guide
 
    user_guide/installation
-   user_guide/quickstart
    user_guide/steps
    user_guide/qc
    user_guide/presets
@@ -72,12 +67,14 @@ apply directly.
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: API Reference
 
    api/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Developer Guide
 
    developer/contributing
@@ -87,14 +84,8 @@ apply directly.
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: About
 
    about/changelog
    about/license
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

@@ -25,7 +25,8 @@ Documentation Workflow
 ~~~~~~~~~~~~~~~~~~~~~~
 
 Builds the Sphinx documentation on every push and pull request to
-``main``; pushes to ``main`` publish it to GitHub Pages.
+``main``, running the tutorials (MNE's ``sample`` dataset is cached between
+runs); pushes to ``main`` publish it to GitHub Pages.
 
 Configuration: ``.github/workflows/docs.yml``
 

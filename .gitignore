@@ -95,3 +95,6 @@ outputs/
 
 # Sphinx autosummary output
 docs/source/api/_autosummary/
+docs/source/api/_backreferences/
+docs/source/auto_tutorials/
+docs/source/sg_execution_times.rst

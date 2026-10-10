@@ -1,6 +1,11 @@
 Command line
 ============
 
+.. seealso::
+
+   :ref:`tut-datasets` shows the Python equivalents of these commands.
+
+
 Installing meeg-utils provides the ``meu`` command.
 
 Quality control

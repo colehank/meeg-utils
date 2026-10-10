@@ -1,6 +1,11 @@
 Presets
 =======
 
+.. seealso::
+
+   :ref:`tut-quickstart` runs the ``eeg-erp`` preset from raw data to epochs.
+
+
 Presets are ready-made pipelines. They are ordinary
 :class:`~meeg_utils.Pipeline` objects: change any parameter with
 ``set_params``, edit steps, or export them to YAML.

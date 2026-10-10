@@ -222,6 +222,26 @@ Testing Guidelines
 * Document the source of every default parameter (a paper, or the default
   of the library it wraps); where there is none, say so
 
+Tutorials
+---------
+
+The tutorials in ``docs/tutorials/`` are Python scripts that
+`sphinx-gallery <https://sphinx-gallery.github.io>`_ runs when the
+documentation is built: text goes in ``# %%`` comment blocks (reST), and
+every figure a block draws appears below it. Each page can be downloaded
+as a script or a Jupyter notebook.
+
+- Use MNE's ``sample`` dataset (``mne.datasets.sample.data_path()``), so the
+  results are real and the tutorials need no other downloads.
+- Keep each tutorial under about five minutes; the documentation build
+  runs all of them (about 15 minutes in total).
+- Run one on its own while writing it:
+  ``MPLBACKEND=Agg uv run python docs/tutorials/plot_10_quality_control.py``.
+- ``# sphinx_gallery_thumbnail_number = N`` picks the gallery thumbnail.
+
+Build the documentation with ``cd docs && uv run make html``; a tutorial
+that raises stops the build.
+
 Reporting Issues
 ----------------
 

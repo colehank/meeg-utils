@@ -1,6 +1,11 @@
 Batch processing
 ================
 
+.. seealso::
+
+   :ref:`tut-datasets` processes a small BIDS dataset end to end.
+
+
 :func:`meeg_utils.process` runs one pipeline over many recordings. Each
 recording gets its own clone of the pipeline, fitted on that recording only,
 and the result is saved with :func:`meeg_utils.io.save_derivative`.

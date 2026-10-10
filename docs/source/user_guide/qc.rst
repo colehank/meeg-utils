@@ -1,6 +1,11 @@
 Quality control
 ===============
 
+.. seealso::
+
+   :ref:`tut-qc` runs the checks on real data and shows their figures.
+
+
 :mod:`meeg_utils.qc` answers *how well was this recording made?*, so that
 problems can be fixed during the session or reported to whoever acquired
 the data. Checks never modify the data.

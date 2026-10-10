@@ -53,6 +53,7 @@ dev = [
     "sphinx-copybutton>=0.5.2",
     "myst-parser>=4.0.0",
     "pandas>=3.0.6",
+    "sphinx-gallery>=0.19",
 ]
 
 [build-system]
@@ -146,6 +147,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["ARG", "PLR2004"]
+# sphinx-gallery shows the value of a block's last expression
+"docs/tutorials/*" = ["B018"]
 "__init__.py" = ["F401"]
 
 [tool.ruff.format]

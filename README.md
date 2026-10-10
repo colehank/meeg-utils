@@ -5,86 +5,37 @@
 [![PyPI version](https://badge.fury.io/py/meeg-utils.svg)](https://badge.fury.io/py/meeg-utils)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
 
-MEG and EEG quality control, preprocessing and epoching on top of
-[MNE-Python](https://mne.tools). Every step is a small, scikit-learn style
-estimator with explicit parameters; steps compose into pipelines that record
-what they did, measure how well it worked, and draw figures to check it.
+MEG/EEG quality control, preprocessing and epoching on top of
+[MNE-Python](https://mne.tools): scikit-learn style steps with documented
+defaults, QC metrics and figures for every step, BIDS in and out.
+
+![Pipeline](resources/preprocessing_pipeline.png)
 
 ```python
 import meeg_utils as meu
-from meeg_utils import steps as S
 
-pipe = meu.Pipeline([
-    ("filter", S.Filter(0.1, 100.0)),
-    ("bads", S.BadChannels()),          # PREP for EEG, Maxwell for Neuromag/CTF MEG
-    ("interpolate", S.Interpolate()),
-    ("line_noise", S.LineNoise()),      # ZapLine-plus
-    ("reference", S.Reference("average")),
-    ("ica", S.ICA(labeler="iclabel")),  # removes components with artifact probability >= 0.8
-])
+raw = meu.io.read("bids/sub-01/eeg/sub-01_task-oddball_eeg.vhdr")
+meu.qc.inspect(raw)                          # how well was it recorded?
 
-source = "bids/sub-01/eeg/sub-01_task-rest_eeg.vhdr"
-raw = meu.io.read(source)       # BIDS sidecars (bad channels, line frequency, ...) are used
+pipe = meu.Pipeline.preset("eeg-erp")        # every parameter has a cited source
 clean = pipe.fit_transform(raw)
-pipe.qc_                        # quality metrics of every step
-figs = pipe.plot(inst=raw)      # {step: {figure kind: matplotlib Figure}}
-meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
-# -> data + JSON sidecar with the configuration, provenance and QC metrics
+pipe.plot(inst=raw)                          # figures of every step
 ```
 
-## Features
+Or a whole BIDS dataset from the command line:
 
-- **Steps** (`meu.steps`): `Filter`, `Resample`, `LineNoise` (ZapLine,
-  ZapLine-plus, notch), `BadChannels` (PREP, Maxwell), `Interpolate`,
-  `Reference`, `ICA` (ICLabel / MEGnet labelling, manual relabelling),
-  `BridgedElectrodes`, `BadSegments`; system-specific noise reduction with
-  `Maxwell` (SSS/tSSS, movement compensation), `HFC` (OPM), `Regression`
-  (reference sensors, EOG), `ASR` and `SNS` (mne-denoise); `HeadAlign` (map
-  MEG runs to a common head position); `ByChannelType` (separate steps for
-  MEG and EEG); epoching with `Epoch`, `FixedLengthEpochs`, `Baseline`,
-  `AutoReject`, and `meu.epochs.combine` for runs. Each validated on
-  simulated data with known sources and artifacts.
-- **Pipelines** follow scikit-learn: parameters are set in the constructor,
-  `fit` / `transform` / `fit_transform` are the only entry points,
-  `set_params(ica__threshold=0.9)`, `clone`, slicing, YAML configurations.
-- **Data integrity**: steps never drop channels or shift the time axis
-  silently; `first_samp`, `meas_date` and annotations are preserved. Every
-  step passes the contract checks in `meeg_utils.testing.check_step`.
-- **Acquisition quality control** (`meu.qc`): bridged electrodes,
-  impedances, flat/clipped channels, outlying channels, line and other
-  narrowband noise, muscle, blink and heart rate (is the EOG/ECG working?),
-  MEG head movement, HPI coils and their SNR, SQUID jumps, the session's
-  empty room, digitization, event counts, photodiode delay and jitter,
-  BIDS metadata against the data. Problems by definition are flagged;
-  measurements whose acceptable range depends on the dataset (head
-  movement, blink rate, ...) are reported unless you set a threshold, and
-  `meu.qc.inspect_dataset` flags recordings that stand out in the dataset;
-  `meu.report.build` writes HTML reports.
-- **Processing quality control**: `qc_` metrics on every step and `plot()`
-  figures (spectra before/after, bad-channel scores, sensor maps, ICA
-  components, head positions, ...).
-- **Command line**: `meu qc /data/bids --out qc/`;
-  `meu run --preset eeg-erp --epochs --option "event_id=[target, standard]" --sources /data/bids --out derivatives/`;
-  `meu preset` (list, export as YAML); `meu report derivatives/` (summary
-  of every run, outlying runs flagged).
-- **Presets**: recommended `eeg-erp`, `eeg-rest`, `meg-erp`, `meg-rest`
-  (MEG by system), every parameter traced to a published default
-  ([docs/presets/recommended.md](docs/presets/recommended.md)); and
-  `had-meeg`, the [HAD-MEEG](https://github.com/colehank/HAD-MEEG)
-  preprocessing with its known issues fixed
-  ([docs/presets/had-meeg.md](docs/presets/had-meeg.md)).
-- **Whole datasets**: `meu.Dataset` selects BIDS recordings;
-  `meu.process_dataset` preprocesses every run, epochs it and combines the
-  runs of each session (MEG aligned to the average head position),
-  resumes interrupted batches and collects failures. `meu.process` runs one
-  pipeline over any list of files.
-- **Any system MNE reads**: the acquisition system (Neuromag/MEGIN, CTF, KIT,
-  BTi, Artemis123, OPM, EEG) is detected from the data; steps with
-  system-specific methods refuse systems they have not been validated for
-  instead of guessing (e.g. Maxwell bad-channel detection: Neuromag and CTF).
+```bash
+meu qc bids/ --out qc/
+meu run --preset eeg-erp --epochs --option "event_id=[target, standard]" \
+    --sources bids/ --out bids/derivatives/meu
+```
+
+- **Acquisition QC**: bridged electrodes, flat channels, line noise, head
+  movement, SQUID jumps, empty room, BIDS metadata, ...
+- **Steps** for every system MNE reads: PREP, ZapLine-plus, SSS/tSSS, HFC,
+  ICA with ICLabel/MEGnet, autoreject, ...
+- **Presets**: `eeg-erp`, `eeg-rest`, `meg-erp`, `meg-rest`, `had-meeg`.
 
 ## Installation
 
@@ -92,38 +43,10 @@ meu.io.save_derivative(clean, source, "bids/derivatives/meu", pipeline=pipe)
 pip install meeg-utils
 ```
 
-Python 3.11+. Version 0.2.0 replaced the 0.1 `PreprocessingPipeline` and
-`BatchPreprocessingPipeline` classes with the step/pipeline API above.
-Analysis (ERP/ERF measures, spectra, time-frequency, group statistics) is
-planned; until then, the outputs are plain MNE objects for MNE's own tools.
-
 ## Documentation
 
-- [User guide and API reference](https://colehank.github.io/meeg-utils/)
-- [Design notes](docs/design/architecture.md) (in Chinese): scope, constraints,
-  roadmap.
-- [Validation on real data](docs/validation/ds007353-sub-01.md) (in Chinese):
-  QC and all presets on HAD-MEEG (OpenNeuro ds007353), CTF MEG and EEG.
+[Tutorials, user guide and API](https://colehank.github.io/meeg-utils/) ·
+[design notes](docs/design/architecture.md) (Chinese) ·
+[validation on real data](docs/validation/ds007353-sub-01.md) (Chinese)
 
-## Development
-
-```bash
-git clone https://github.com/colehank/meeg-utils.git
-cd meeg-utils
-uv sync
-uv run pytest
-uv run ruff check src tests && uv run mypy src
-```
-
-See the [Contributing Guide](https://colehank.github.io/meeg-utils/developer/contributing.html)
-for details.
-
-## License
-
-MIT License - see [LICENSE](LICENSE) for details.
-
-## Support
-
-- [Documentation](https://colehank.github.io/meeg-utils/)
-- [Issue Tracker](https://github.com/colehank/meeg-utils/issues)
-- [Discussions](https://github.com/colehank/meeg-utils/discussions)
+MIT License.

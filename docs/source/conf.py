@@ -24,6 +24,7 @@ extensions = [
     "sphinx.ext.mathjax",
     "sphinx_copybutton",
     "myst_parser",
+    "sphinx_gallery.gen_gallery",
 ]
 
 templates_path = ["_templates"]
@@ -90,6 +91,32 @@ intersphinx_mapping = {
     "python": ("https://docs.python.org/3", None),
     "numpy": ("https://numpy.org/doc/stable", None),
     "mne": ("https://mne.tools/stable", None),
+    "mne_bids": ("https://mne.tools/mne-bids/stable", None),
+    "sklearn": ("https://scikit-learn.org/stable", None),
+}
+
+# Sphinx-Gallery: the tutorials are scripts run at build time; their figures
+# go into the pages, and each page can be downloaded as .py or .ipynb.
+# They use MNE's "sample" dataset (downloaded on first use, 1.6 GB).
+sphinx_gallery_conf = {
+    "examples_dirs": ["../tutorials"],
+    "gallery_dirs": ["auto_tutorials"],
+    "filename_pattern": r"\.py$",  # run every tutorial
+    "within_subsection_order": "FileNameSortKey",
+    "download_all_examples": False,
+    "remove_config_comments": True,
+    "show_memory": False,
+    "abort_on_example_error": True,
+    "reset_modules": ("matplotlib",),
+    "matplotlib_animations": False,
+    "image_scrapers": ("matplotlib",),
+    "image_srcset": ["2x"],
+    "reference_url": {"meeg_utils": None},
+    "doc_module": ("meeg_utils",),
+    "backreferences_dir": "api/_backreferences",
+    "inspect_global_variables": False,
+    # the figures are shown as images; do not also print their repr
+    "ignore_repr_types": r"matplotlib\.(figure|axes|text)|mne\.viz|dict_values",
 }
 
 # MyST settings

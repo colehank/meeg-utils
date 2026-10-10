@@ -55,6 +55,10 @@ Changed
   the components ``ICA000 (mag)``); the number of components is capped at
   the rank in ``info`` as well as the data rank (after SSS, ZapLine-plus
   raises the data rank above the SSS rank).
+* ``BadChannels`` scores figure: for Maxwell detection it shows the number
+  of time windows above the limit against MNE's ``min_count`` (the rule MNE
+  applies) instead of the maximum score, which could exceed the line for a
+  channel that was not bad; with many channels the detected ones are named.
 * ``meu.Dataset`` leaves out empty-room recordings; it and
   ``qc.inspect_dataset`` no longer take the Neuromag cross-talk and
   calibration files (``*_acq-crosstalk_meg.fif``) or files under
@@ -67,6 +71,12 @@ Added
 ~~~~~
 
 * ``meu run --set STEP__PARAM=VALUE`` changes step parameters.
+* ``BadChannels(psd=True)`` turns on PyPREP's band-power criterion.
+* Pipelines show as a table of their steps in Jupyter and in the
+  documentation (instead of scikit-learn's estimator diagram).
+* Tutorials (sphinx-gallery, run on MNE's ``sample`` data, downloadable as
+  notebooks): quickstart, acquisition QC, building pipelines, epochs and
+  combining runs, whole BIDS datasets.
 
 * ``meu.qc``: acquisition-quality checks (amplitude, bridging, impedance,
   outlying channels, narrowband noise, muscle, blinks, heart rate, head
