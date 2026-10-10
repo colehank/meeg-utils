@@ -241,7 +241,7 @@ class ICA(Step):
         import matplotlib.pyplot as plt
 
         n = len(self.labels_)
-        fig, ax = plt.subplots(figsize=(max(6, 0.35 * n), 3.2), layout="constrained")
+        fig, ax = plt.subplots(figsize=(min(11.0, max(6.0, 0.3 * n)), 3.6), layout="constrained")
         names = sorted(set(self.labels_))
         cmap = plt.get_cmap("tab10")
         colors = [cmap(names.index(label) % 10) for label in self.labels_]
@@ -252,16 +252,15 @@ class ICA(Step):
             )
         ax.axhline(self.threshold, color="C3", ls="--", lw=1)
         ax.set(xlabel="Component", ylabel="Label probability", ylim=(0, 1.08), xlim=(-1, n))
-        ax.set_xticks(np.arange(n))
+        ax.set_xticks(np.arange(0, n, 1 if n <= 30 else 5))
         handles = [plt.Rectangle((0, 0), 1, 1, color=cmap(i % 10)) for i in range(len(names))]
-        ax.legend(
+        fig.legend(
             handles,
             names,
-            ncols=min(4, len(names)),
+            ncols=len(names),
             fontsize="small",
             frameon=False,
-            loc="upper center",
-            bbox_to_anchor=(0.5, -0.2),
+            loc="outside lower center",
         )
         fig.suptitle(f"ICA labels ({self.labeler_ or 'manual'}); x = excluded")
         return fig
