@@ -8,7 +8,8 @@ Usage::
 Layout (left to right, top to bottom): how to run it; reading, acquisition
 QC and epoching; the BIDS data passed between the stages; preprocessing in
 two lanes (EEG and MEG, each in the order of the recommended presets); what
-every step records. The style follows the HAD-MEEG pipeline figure
+every step records. Every box names the class behind it, with the
+arguments the presets use. The style follows the HAD-MEEG pipeline figure
 (preprocessing_pipeline.png): module groups, steps as boxes, data as
 parallelograms.
 """
@@ -18,21 +19,21 @@ from html import escape
 from itertools import pairwise
 from pathlib import Path
 
-W, H = 1600, 930
+W, H = 1600, 936
 SANS = "'Helvetica Neue', Helvetica, Arial, Inter, sans-serif"
 MONO = "'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace"
 
 INK, MUTED, LINE = "#16233a", "#6b778c", "#3b4a60"
-STEP_STROKE = "#30486e"
 DATA_FILL, DATA_STROKE, DATA_INK = "#ecf7e6", "#97c97a", "#24461a"
 INPUT_FILL, INPUT_STROKE = "#eceef2", "#c2c8d1"
-#: module name -> (accent, card fill, card stroke)
+#: module -> (accent, card fill, card stroke, light accent for chips)
 THEME = {
-    "read": ("#56657c", "#f6f7f9", "#d6dbe2"),
-    "qc": ("#0e7f86", "#f0f9f9", "#bfe1e1"),
-    "pre": ("#2d63c8", "#f3f7fe", "#c9d9f3"),
-    "epo": ("#6b4fd8", "#f6f4fe", "#d8d0f6"),
+    "read": ("#56657c", "#f6f7f9", "#d6dbe2", "#b9c1cc"),
+    "qc": ("#0e7f86", "#f0f9f9", "#bfe1e1", "#8cc9cb"),
+    "pre": ("#2d63c8", "#f3f7fe", "#c9d9f3", "#9db8e8"),
+    "epo": ("#6b4fd8", "#f6f4fe", "#d8d0f6", "#b6a8ee"),
 }
+CUSTOM = "#b4570a"  # the "you can change this" reminders
 
 out: list[str] = []
 
@@ -54,18 +55,18 @@ def text(x, y, s, size=14, weight=400, fill=INK, anchor="middle", mono=False, ex
     )
 
 
-def pill(x, y, s, color, size=12.5, mono=True, fill="white", h=22, pad=9):
+def pill(x, y, s, color, size=12.5, mono=True, fill="white", h=22, pad=9, ink=None):
     x, w = round(x), round(width(s, size, mono) + 2 * pad)
     add(
-        f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h}" rx="{h / 2}" fill="{fill}" '
+        f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{h / 2}" fill="{fill}" '
         f'stroke="{color}" stroke-width="1.2"/>'
     )
-    text(x + w / 2, y + h / 2 + size * 0.36, s, size=size, fill=color, mono=mono)
+    text(x + w / 2, y + h / 2 + size * 0.36, s, size=size, fill=ink or color, mono=mono)
     return w
 
 
 def card(x, y, w, h, key, number, title, module, libs=None, libs_x=None):
-    accent, fill, stroke = THEME[key]
+    accent, fill, stroke, _ = THEME[key]
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="16" fill="{fill}" '
         f'stroke="{stroke}" stroke-width="1.5"/>'
@@ -81,24 +82,29 @@ def card(x, y, w, h, key, number, title, module, libs=None, libs_x=None):
             text(libs_x, y + h - 13, libs, size=11.5, fill=MUTED)
 
 
-def step(x, y, w, h, title, sub=None, accent=STEP_STROKE, size=13.5):
+def step(x, y, w, h, title, code, note=None, key="pre"):
+    """A step: what it does, the class behind it, and (optionally) a note."""
+    accent = THEME[key][0]
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="8" fill="white" '
         f'stroke="{accent}" stroke-width="1.5"/>'
     )
-    if sub:
-        text(x + w / 2, y + h / 2 - 2, title, size=size, weight=600)
-        text(x + w / 2, y + h / 2 + 14, sub, size=11.5, fill=MUTED)
+    cx = x + w / 2
+    if note:
+        text(cx, y + 20, title, size=13.5, weight=600)
+        text(cx, y + 37, code, size=11, fill=accent, mono=True)
+        text(cx, y + 53, note, size=11, fill=MUTED)
     else:
-        text(x + w / 2, y + h / 2 + 5, title, size=size, weight=600)
+        text(cx, y + 26, title, size=13.5, weight=600)
+        text(cx, y + 45, code, size=11, fill=accent, mono=True)
 
 
-def chip(x, y, w, h, s, accent):
+def chip(x, y, w, h, s, key):
     add(
         f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{h / 2}" fill="white" '
-        f'stroke="{accent}" stroke-width="1.2"/>'
+        f'stroke="{THEME[key][3]}" stroke-width="1.2"/>'
     )
-    text(x + w / 2, y + h / 2 + 4.3, s, size=12.5)
+    text(x + w / 2, y + h / 2 + 4, s, size=11.5, mono=True)
 
 
 def para(x, y, w, h, title, sub=None, fill=DATA_FILL, stroke=DATA_STROKE, ink=DATA_INK, skew=14):
@@ -114,18 +120,25 @@ def para(x, y, w, h, title, sub=None, fill=DATA_FILL, stroke=DATA_STROKE, ink=DA
         text(x + w / 2, y + h / 2 + 5, title, size=15.5, weight=600, fill=ink)
 
 
-def arrow(points, head=True, color=LINE, dashed=False):
+def arrow(points, head=True, color=LINE):
     d = "M " + " L ".join(f"{px:.1f},{py:.1f}" for px, py in points)
-    extra = ' stroke-dasharray="5 4"' if dashed else ""
     end = ' marker-end="url(#head)"' if head else ""
     add(
         f'<path d="{d}" fill="none" stroke="{color}" stroke-width="1.6" stroke-linejoin="round" '
-        f'stroke-linecap="round"{extra}{end}/>'
+        f'stroke-linecap="round"{end}/>'
     )
 
 
-def label(x, y, s, size=11.5, fill=MUTED, anchor="middle"):
-    text(x, y, s, size=size, fill=fill, anchor=anchor)
+def custom_note(x, y, lead, code):
+    """A reminder that this part is configurable: pencil mark, lead text, code."""
+    add(
+        f'<path d="M{x},{y + 11} l8,-8 l3,3 l-8,8 h-3 z" fill="none" stroke="{CUSTOM}" '
+        'stroke-width="1.4" stroke-linejoin="round"/>'
+    )
+    text(x + 18, y + 13, lead, size=12.5, weight=600, fill=CUSTOM, anchor="start")
+    if code:
+        text(x + 18 + width(lead, 12.5) + 8, y + 13, code, size=11.5, fill=CUSTOM,
+             anchor="start", mono=True)  # fmt: skip
 
 
 # ----------------------------------------------------------------------------------------------
@@ -137,7 +150,7 @@ add('<title id="title">meeg-utils architecture</title>')
 add(
     '<desc id="desc">Recordings are read with their BIDS sidecars, checked by the acquisition QC, '
     "preprocessed run by run (an EEG and an MEG lane), epoched and combined per session; every "
-    "step records QC metrics, figures and provenance for the reports.</desc>"
+    "box names the class behind it, and every step can be changed, replaced or removed.</desc>"
 )
 add(
     "<defs>"
@@ -162,51 +175,57 @@ for name, code in (
     x += width(name, 14) + 12
     x += pill(x, 30, code, THEME["pre"][0], size=12.5) + 54
 
+TOP, TOP_H = 100, 252
+
 # --- 1 read -----------------------------------------------------------------------------------------
-para(40, 100, 300, 58, "Raw recordings", sub="any format MNE reads", fill=INPUT_FILL,
+para(40, TOP, 300, 58, "Raw recordings", sub="any format MNE reads", fill=INPUT_FILL,
      stroke=INPUT_STROKE, ink=INK)  # fmt: skip
-card(40, 190, 300, 132, "read", 1, "Read", "meu.io")
-for i, (s, c) in enumerate((("BIDS sidecars: bads, line frequency", INK),
-                            ("detects the acquisition system", INK),
-                            ("Neuromag · CTF · KIT · OPM · EEG", MUTED))):  # fmt: skip
-    text(190, 250 + i * 20, s, size=12.5, fill=c)
-arrow([(300, 158), (300, 188)])
+rd_y = TOP + 92
+card(40, rd_y, 300, TOP + TOP_H - rd_y, "read", 1, "Read", "meu.io")
+for i, (s, c, mono) in enumerate(
+    (
+        ("meu.io.read(path)", THEME["read"][0], True),
+        ("BIDS sidecars: bads, line frequency", INK, False),
+        ("detect_system(raw)", THEME["read"][0], True),
+        ("Neuromag · CTF · KIT · OPM · EEG", MUTED, False),
+    )
+):
+    text(190, rd_y + 62 + i * 20, s, size=12 if mono else 12.5, fill=c, mono=mono)
+arrow([(300, TOP + 58), (300, rd_y - 2)])
 
 # --- 2 acquisition QC --------------------------------------------------------------------------------
-qx, qy, qw, qh = 376, 100, 548, 222
-card(qx, qy, qw, qh, "qc", 2, "Acquisition QC", "meu.qc", libs="MNE · mne-denoise")
-QC_CHIP = "#8cc9cb"  # the QC accent, lightened (solid: no transparency)
-chips = [
-    "Flat · clipped · NaN", "Line & narrowband", "Outlying channels",
-    "Bridged electrodes", "Impedance", "Blinks · heart · muscle",
-    "Head movement · cHPI", "SQUID jumps", "Empty room",
-    "Digitization", "Events · photodiode", "BIDS metadata",
+qx, qw = 376, 548
+card(qx, TOP, qw, TOP_H, "qc", 2, "Acquisition QC", "meu.qc", libs="MNE · mne-denoise")
+checks = [
+    "Amplitude", "NarrowbandNoise", "OutlierChannels", "Muscle",
+    "Bridging", "Impedance", "Blinks", "HeartRate",
+    "HeadMovement", "ChpiSNR", "SquidJumps", "EmptyRoom",
+    "Digitization", "Events", "Photodiode", "BidsMetadata",
 ]  # fmt: skip
-cw, chh, gx, gy = 164, 26, 10, 8
-for i, c in enumerate(chips):
-    r, k = divmod(i, 3)
-    chip(qx + 21 + k * (cw + gx), qy + 54 + r * (chh + gy), cw, chh, c, QC_CHIP)
-ly = qy + qh - 13
+cw, chh, gx, gy = 120, 25, 8, 8
+for i, c in enumerate(checks):
+    r, k = divmod(i, 4)
+    chip(qx + 21 + k * (cw + gx), TOP + 52 + r * (chh + gy), cw, chh, c, "qc")
+ly = TOP + 52 + 4 * (chh + gy) + 14
 x = qx + 21
 for lvl, col in (("fail", "#c62828"), ("warn", "#e07b00"), ("ok", "#2e7d32"), ("info", "#78859b")):
     add(f'<circle cx="{x + 4}" cy="{ly - 4}" r="4" fill="{col}"/>')
     text(x + 12, ly, lvl, size=11.5, fill=MUTED, anchor="start")
     x += width(lvl, 11.5) + 28
 text(x - 6, ly, "(info: measured, not judged)", size=11.5, fill=MUTED, anchor="start")
+custom_note(qx + 21, TOP + TOP_H - 44, "Your thresholds:", "qc.HeadMovement(warn_mm=5)")
 
 # --- 4 epoching ----------------------------------------------------------------------------------------
-ex, ey, ew, eh = 960, 100, 600, 222
-epo = THEME["epo"][0]
-card(
-    ex, ey, ew, eh, "epo", 4, "Epoching", "meu.epochs", libs="MNE · autoreject", libs_x=ex + ew / 2
-)
-bw, bh, by = 126, 56, ey + 100
+ex, ew = 960, 600
+card(ex, TOP, ew, TOP_H, "epo", 4, "Epoching", "meu.epochs", libs="MNE · autoreject",
+     libs_x=ex + ew / 2)  # fmt: skip
+bw, bh, by = 126, 62, TOP + 118
 gap = (ew - 40 - 4 * bw) / 3
 xs = [round(ex + 20 + i * (bw + gap)) for i in range(4)]
-step(xs[0], by, bw, bh, "Epoch each run", "events · fixed length", epo, size=13)
-step(xs[1], by, bw, bh, "Align heads", "MEG · HeadAlign", epo, size=13)
-step(xs[2], by, bw, bh, "autoreject", "local: repair or drop", epo, size=13)
-step(xs[3], by, bw, bh, "Combine runs", "per session", epo, size=13)
+step(xs[0], by, bw, bh, "Epoch each run", "Epoch(event_id)", "or FixedLength", key="epo")
+step(xs[1], by, bw, bh, "Align heads", "HeadAlign(dest)", "MEG only", key="epo")
+step(xs[2], by, bw, bh, "Repair / drop", "AutoReject()", "local", key="epo")
+step(xs[3], by, bw, bh, "Combine runs", "epochs.combine", "per session", key="epo")
 mid = by + bh / 2
 for a, b in ((0, 1), (1, 2), (2, 3)):
     arrow([(xs[a] + bw + 3, mid), (xs[b] - 4, mid)])
@@ -219,12 +238,15 @@ arrow(
         (xs[2] + bw / 2, by - 4),
     ]
 )
-label(xs[1] + bw / 2, top - 6, "EEG")
+text(xs[1] + bw / 2, top - 6, "EEG", size=11.5, fill=MUTED)
+custom_note(ex + 318, TOP + 18, "Change any step", "")
 
 # --- data on disk ------------------------------------------------------------------------------------------
-band_y, band_h = 352, 104
-add(f'<rect x="20" y="{band_y}" width="{W - 40}" height="{band_h}" rx="20" fill="none" '
-    'stroke="#c7ccd4" stroke-width="1.4" stroke-dasharray="9 7"/>')  # fmt: skip
+band_y, band_h = TOP + TOP_H + 30, 104
+add(
+    f'<rect x="20" y="{band_y}" width="{W - 40}" height="{band_h}" rx="20" fill="none" '
+    'stroke="#c7ccd4" stroke-width="1.4" stroke-dasharray="9 7"/>'
+)
 add(f'<rect x="40" y="{band_y - 9}" width="196" height="18" fill="white"/>')
 text(46, band_y + 4, "DATA ON DISK · BIDS", size=11.5, weight=700, fill=MUTED, anchor="start",
      extra=' letter-spacing="1.2"')  # fmt: skip
@@ -235,72 +257,79 @@ pre_x = 960
 para(pre_x, py0, 290, ph0, "Preprocessed runs", sub="desc-preproc · JSON provenance")
 para(1270, py0, 290, ph0, "Epochs", sub="per session · desc-epochs")
 
-arrow([(190, 322), (190, py0 - 2)])  # read -> raw data
-arrow([(326, py0 + 18), (358, py0 + 18), (358, 270), (qx - 3, 270)])  # raw data -> QC
-arrow([(qx + qw / 2, qy + qh), (qx + qw / 2, py0 - 2)])  # QC -> report
+arrow([(190, TOP + TOP_H), (190, py0 - 2)])  # read -> raw data
+arrow([(326, py0 + 18), (358, py0 + 18), (358, TOP + 170), (qx - 3, TOP + 170)])  # -> QC
+arrow([(qx + qw / 2, TOP + TOP_H), (qx + qw / 2, py0 - 2)])  # QC -> report
 arrow([(xs[0] + bw / 2, py0), (xs[0] + bw / 2, by + bh + 4)])  # preprocessed -> epoching
 arrow([(xs[3] + bw / 2, by + bh), (xs[3] + bw / 2, py0 - 2)])  # epoching -> epochs
 
 # --- 3 preprocessing -------------------------------------------------------------------------------------------
-px, pyy, pw, phh = 110, 488, W - 130, 300
-pre = THEME["pre"][0]
+px, pyy = 110, band_y + band_h + 32
+pw = W - 20 - px
+sw, sh = 168, 62
+eeg_y, meg_y = pyy + 70, pyy + 70 + sh + 48
+phh = meg_y + sh + 44 - pyy
 card(px, pyy, pw, phh, "pre", 3, "Preprocessing · one pipeline per run", "meu.steps",
      libs="MNE · PyPREP · mne-denoise · mne-icalabel")  # fmt: skip
+custom_note(px + 560, pyy + 18, "Presets are defaults: change any box",
+            "pipe.set_params(ica__threshold=0.9) · replace · insert_after · remove")  # fmt: skip
 cols = 7
-sw, sh = 166, 54
 x0 = px + 86
 sgap = (px + pw - 20 - x0 - (cols * sw)) / (cols - 1)
 cx = [round(x0 + i * (sw + sgap)) for i in range(cols)]
 lanes = {
-    "EEG": (560, [
-        ("Bridged electrodes", "interpolate small groups"),
-        ("High-pass", "0.1 Hz"),
-        ("Line noise", "ZapLine-plus"),
-        ("Bad channels", "PREP, robust reference"),
-        ("Interpolate", "spherical splines"),
-        ("Re-reference", "average"),
-        ("ICA", "ICLabel ≥ 0.8"),
+    "EEG": (eeg_y, [
+        ("Bridged electrodes", "BridgedElectrodes()", "interpolate small groups"),
+        ("High-pass", "Filter(0.1, None)", None),
+        ("Line noise", "LineNoise()", "ZapLine-plus"),
+        ("Bad channels", 'BadChannels("prep")', "robust reference"),
+        ("Interpolate", "Interpolate()", "spherical splines"),
+        ("Re-reference", 'Reference("average")', None),
+        ("ICA", 'ICA(labeler="iclabel")', "removes p ≥ 0.8"),
     ]),
-    "MEG": (672, [
-        ("Bad channels", "Maxwell"),
-        ("Noise reduction", "SSS · CTF · KIT"),
-        ("High-pass", "0.1 Hz"),
-        ("Resample", "250 Hz"),
-        ("Line noise", "ZapLine-plus"),
+    "MEG": (meg_y, [
+        ("Bad channels", 'BadChannels("maxwell")', None),
+        ("Noise reduction", "Maxwell()", "or Reference / Regression"),
+        ("High-pass", "Filter(0.1, None)", None),
+        ("Resample", "Resample(250)", "for MEGnet"),
+        ("Line noise", "LineNoise()", "ZapLine-plus"),
         None,
-        ("ICA", "MEGnet ≥ 0.8"),
+        ("ICA", 'ICA(labeler="megnet")', "20 comp. · removes p ≥ 0.8"),
     ]),
 }  # fmt: skip
 for ly, steps in lanes.values():
     placed = [i for i, s in enumerate(steps) if s]
     for i in placed:
-        step(cx[i], ly, sw, sh, *steps[i], accent=pre)
+        step(cx[i], ly, sw, sh, *steps[i])
     for a, b in pairwise(placed):
         arrow([(cx[a] + sw + 3, ly + sh / 2), (cx[b] - 4, ly + sh / 2)])
-label(cx[1] + sw / 2, 672 - 10, "by system (OPM: S.HFC, no preset yet)", anchor="middle")
-text(px + 22, pyy + phh - 13, "Presets", size=11.5, weight=700, fill=MUTED, anchor="start")
-text(px + 72, pyy + phh - 13, "eeg-erp · eeg-rest · meg-erp · meg-rest · had-meeg", size=11.5,
-     fill=MUTED, anchor="start")  # fmt: skip
-text(px + 400, pyy + phh - 13, "More steps", size=11.5, weight=700, fill=MUTED, anchor="start")
-text(px + 470, pyy + phh - 13, "BadSegments · ASR · SNS · ByChannelType", size=11.5, fill=MUTED,
+text(cx[1] + sw / 2, meg_y - 10, "Neuromag · CTF · KIT; OPM: S.HFC, no preset yet", size=11.5,
+     fill=MUTED)  # fmt: skip
+fy_ = pyy + phh - 13
+text(px + 22, fy_, "Presets", size=11.5, weight=700, fill=MUTED, anchor="start")
+text(px + 72, fy_, "eeg-erp · eeg-rest · meg-erp · meg-rest · had-meeg", size=11.5, fill=MUTED,
      anchor="start")  # fmt: skip
+text(px + 400, fy_, "More steps", size=11.5, weight=700, fill=MUTED, anchor="start")
+text(px + 470, fy_, "BadSegments · ASR · SNS · Regression · HFC · ByChannelType", size=11.5,
+     fill=MUTED, anchor="start")  # fmt: skip
 
 # raw data -> both lanes (a bus left of the card)
 bus_x = 64
-arrow([(bus_x, py0 + ph0), (bus_x, 672 + sh / 2)], head=False)
-arrow([(bus_x, 560 + sh / 2), (cx[0] - 4, 560 + sh / 2)])
-arrow([(bus_x, 672 + sh / 2), (cx[0] - 4, 672 + sh / 2)])
-add(f'<circle cx="{bus_x}" cy="{560 + sh / 2}" r="3" fill="{LINE}"/>')
+arrow([(bus_x, py0 + ph0), (bus_x, meg_y + sh / 2)], head=False)
+arrow([(bus_x, eeg_y + sh / 2), (cx[0] - 4, eeg_y + sh / 2)])
+arrow([(bus_x, meg_y + sh / 2), (cx[0] - 4, meg_y + sh / 2)])
+add(f'<circle cx="{bus_x}" cy="{eeg_y + sh / 2}" r="3" fill="{LINE}"/>')
 for lane, (ly, _) in lanes.items():
-    pill(px + 20, ly + sh / 2 - 11, lane, pre, size=12, mono=False, fill="white")
-# both ICA outputs -> preprocessed runs (a bus along the right of the card)
+    pill(px + 20, ly + sh / 2 - 11, lane, THEME["pre"][0], size=12, mono=False)
+# both ICA outputs -> preprocessed runs (a bus right of the steps)
 rx = cx[6] + sw + 10
-arrow([(cx[6] + sw, 560 + sh / 2), (rx, 560 + sh / 2)], head=False)
-arrow([(cx[6] + sw, 672 + sh / 2), (rx, 672 + sh / 2), (rx, 472), (pre_x + 145, 472),
+bus_top = band_y + band_h + 16
+arrow([(cx[6] + sw, eeg_y + sh / 2), (rx, eeg_y + sh / 2)], head=False)
+arrow([(cx[6] + sw, meg_y + sh / 2), (rx, meg_y + sh / 2), (rx, bus_top), (pre_x + 145, bus_top),
        (pre_x + 145, py0 + ph0 + 3)])  # fmt: skip
 
 # --- what every step records ------------------------------------------------------------------------------------
-fy = 812
+fy = pyy + phh + 24
 add(f'<rect x="20" y="{fy}" width="{W - 40}" height="46" rx="12" fill="#f7f8fa" stroke="#e1e5ea"/>')
 text(42, fy + 28, "EVERY STEP AND CHECK", size=12, weight=700, fill=MUTED, anchor="start",
      extra=' letter-spacing="1.5"')  # fmt: skip
@@ -314,23 +343,33 @@ text(x, fy + 28, "HTML report per run · dataset summary with outlying runs", si
      anchor="start")  # fmt: skip
 
 # --- legend ---------------------------------------------------------------------------------------------------------
-ly = 882
-x = 1010
-add(f'<polygon points="{x + 9},{ly} {x + 46},{ly} {x + 37},{ly + 20} {x},{ly + 20}" '
-    f'fill="{INPUT_FILL}" stroke="{INPUT_STROKE}" stroke-width="1.4"/>')  # fmt: skip
+ly = fy + 70
+x = 860
+add(
+    f'<polygon points="{x + 9},{ly} {x + 46},{ly} {x + 37},{ly + 20} {x},{ly + 20}" '
+    f'fill="{INPUT_FILL}" stroke="{INPUT_STROKE}" stroke-width="1.4"/>'
+)
 text(x + 54, ly + 15, "input", size=12.5, fill=MUTED, anchor="start")
-x += 120
-add(f'<polygon points="{x + 9},{ly} {x + 46},{ly} {x + 37},{ly + 20} {x},{ly + 20}" '
-    f'fill="{DATA_FILL}" stroke="{DATA_STROKE}" stroke-width="1.4"/>')  # fmt: skip
+x += 110
+add(
+    f'<polygon points="{x + 9},{ly} {x + 46},{ly} {x + 37},{ly + 20} {x},{ly + 20}" '
+    f'fill="{DATA_FILL}" stroke="{DATA_STROKE}" stroke-width="1.4"/>'
+)
 text(x + 54, ly + 15, "data (BIDS)", size=12.5, fill=MUTED, anchor="start")
-x += 150
-add(f'<rect x="{x}" y="{ly}" width="46" height="20" rx="6" fill="{THEME["pre"][1]}" '
-    f'stroke="{THEME["pre"][2]}" stroke-width="1.4"/>')  # fmt: skip
+x += 145
+add(
+    f'<rect x="{x}" y="{ly}" width="46" height="20" rx="6" fill="{THEME["pre"][1]}" '
+    f'stroke="{THEME["pre"][2]}" stroke-width="1.4"/>'
+)
 text(x + 54, ly + 15, "module", size=12.5, fill=MUTED, anchor="start")
-x += 120
-add(f'<rect x="{x}" y="{ly}" width="46" height="20" rx="5" fill="white" stroke="{STEP_STROKE}" '
-    'stroke-width="1.4"/>')  # fmt: skip
-text(x + 54, ly + 15, "step", size=12.5, fill=MUTED, anchor="start")
+x += 115
+add(
+    f'<rect x="{x}" y="{ly}" width="46" height="20" rx="5" fill="white" '
+    f'stroke="{THEME["pre"][0]}" stroke-width="1.4"/>'
+)
+text(x + 54, ly + 15, "step (class)", size=12.5, fill=MUTED, anchor="start")
+x += 140
+custom_note(x, ly + 2, "configurable", "")
 
 add("</svg>")
 Path(sys.argv[1]).write_text("\n".join(out), encoding="utf-8")
