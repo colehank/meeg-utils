@@ -23,6 +23,15 @@ def pipe() -> Pipeline:
 class TestFitTransform:
     """fit / transform / fit_transform."""
 
+    def test_html_repr_lists_steps(self, pipe: Pipeline, small_raw: BaseRaw) -> None:
+        """Notebooks and the docs show one row per step, not scikit-learn's diagram."""
+        html = pipe._repr_html_()
+        assert all(f"<b>{name}</b>" in html for name, _ in pipe.steps)
+        assert "fitted" not in html
+        pipe.fit(small_raw)
+        assert "fitted" in pipe._repr_html_()
+        assert pipe._repr_mimebundle_()["text/html"] == pipe._repr_html_()
+
     def test_fit_transform_chains_steps(self, pipe: Pipeline, small_raw: BaseRaw) -> None:
         """Each step is fitted on the output of the previous one."""
         out = pipe.fit_transform(small_raw)

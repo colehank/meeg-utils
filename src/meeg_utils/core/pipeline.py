@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import html
 import importlib
 import os
 import platform
@@ -276,6 +277,25 @@ class Pipeline(BaseEstimator):
     def __len__(self) -> int:
         """Return the number of steps."""
         return len(self.steps)
+
+    def _repr_html_(self) -> str:
+        """One row per step (name, class and changed parameters) for notebooks and docs."""
+        left = ' style="text-align:left"'
+        rows = "".join(
+            f"<tr><td{left}>{i}</td><td{left}><b>{html.escape(name)}</b></td>"
+            f"<td{left}><code>{html.escape(repr(step))}</code></td>"
+            f"<td{left}>{'fitted' if hasattr(step, 'system_') else ''}</td></tr>"
+            for i, (name, step) in enumerate(self.steps)
+        )
+        return (
+            f'<table class="meu-pipeline"><thead><tr><th{left}>#</th><th{left}>Step</th>'
+            f"<th{left}>Configuration (changed parameters)</th><th></th></tr></thead>"
+            f"<tbody>{rows}</tbody></table>"
+        )
+
+    def _repr_mimebundle_(self, **kwargs: Any) -> dict[str, str]:
+        """Jupyter display: the step table instead of scikit-learn's estimator diagram."""
+        return {"text/plain": repr(self), "text/html": self._repr_html_()}
 
     def __getitem__(self, key: int | str | slice) -> Step | Pipeline:
         """Return a step by position or name, or a sub-pipeline for a slice.
