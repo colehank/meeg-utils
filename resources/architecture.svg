@@ -1,129 +1,68 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 640" width="1400" height="640" role="img" aria-labelledby="title desc">
-<title id="title">meeg-utils architecture</title>
-<desc id="desc">Recordings are read with their BIDS sidecars, checked by the acquisition QC, preprocessed run by run (an EEG and an MEG lane), epoched and combined per session. Every box names the class behind it; every step can be changed.</desc>
-<defs><marker id="head" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6.5" markerHeight="6.5" orient="auto-start-reverse"><path d="M0,1 L10,5 L0,9 z" fill="#3b4a60"/></marker></defs>
-<rect width="1400" height="640" fill="white"/>
-<polygon points="42,30 290,30 278,82 30,82" fill="#eceef2" stroke="#c3c9d2" stroke-width="1.5" stroke-linejoin="round"/>
-<text x="160.0" y="53.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="14.5" font-weight="600" fill="#1c2740" text-anchor="middle">Raw recordings</text>
-<text x="160.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#1c2740" text-anchor="middle">any format MNE reads</text>
-<rect x="30" y="114" width="260" height="102" rx="14" fill="#f4f7fc" stroke="#cfdaee" stroke-width="1.5"/>
-<text x="50.0" y="144.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="17" font-weight="600" fill="#1c2740" text-anchor="start">Read</text>
-<text x="98.0" y="143.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#2f5fb3" text-anchor="start">meu.io</text>
-<text x="274.0" y="204.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#707b8e" text-anchor="end">mne-bids</text>
-<text x="160.0" y="168.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1c2740" text-anchor="middle">BIDS sidecars · system detection</text>
-<text x="160.0" y="186.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11.5" font-weight="400" fill="#707b8e" text-anchor="middle">Neuromag · CTF · KIT · OPM · EEG</text>
-<path d="M 250.0,82.0 L 250.0,112.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<rect x="322" y="30" width="480" height="186" rx="14" fill="#f4f7fc" stroke="#cfdaee" stroke-width="1.5"/>
-<text x="342.0" y="60.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="17" font-weight="600" fill="#1c2740" text-anchor="start">Acquisition QC</text>
-<text x="480.1" y="59.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#2f5fb3" text-anchor="start">meu.qc</text>
-<text x="786.0" y="204.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#707b8e" text-anchor="end">mne · mne-denoise</text>
-<text x="562.0" y="92.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1c2740" text-anchor="middle">flat · clipped · bridged · impedance · outlying channels</text>
-<text x="562.0" y="113.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1c2740" text-anchor="middle">line &amp; narrowband noise · muscle · blinks · heartbeat</text>
-<text x="562.0" y="134.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1c2740" text-anchor="middle">head movement · cHPI · SQUID jumps · empty room</text>
-<text x="562.0" y="155.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1c2740" text-anchor="middle">digitization · events · photodiode · BIDS metadata</text>
-<text x="562.0" y="184.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="11.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">qc.inspect(raw) → fail · warn · ok · info</text>
-<rect x="834" y="30" width="536" height="186" rx="14" fill="#f4f7fc" stroke="#cfdaee" stroke-width="1.5"/>
-<text x="854.0" y="60.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="17" font-weight="600" fill="#1c2740" text-anchor="start">Epoching</text>
-<text x="938.1" y="59.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#2f5fb3" text-anchor="start">meu.epochs</text>
-<text x="1354.0" y="204.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#707b8e" text-anchor="end">mne · autoreject</text>
-<rect x="850" y="116" width="116" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="908.0" y="139.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Epoch</text>
-<text x="908.0" y="157.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Epoch(event_id)</text>
-<rect x="979" y="116" width="116" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1037.0" y="139.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Align heads</text>
-<text x="1037.0" y="157.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">HeadAlign()</text>
-<rect x="1109" y="116" width="116" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1167.0" y="139.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Repair / drop</text>
-<text x="1167.0" y="157.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">AutoReject()</text>
-<rect x="1238" y="116" width="116" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1296.0" y="139.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Combine runs</text>
-<text x="1296.0" y="157.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">epochs.combine</text>
-<path d="M 968.0,142.0 L 976.0,142.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1097.0,142.0 L 1106.0,142.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1227.0,142.0 L 1235.0,142.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 908.0,114.0 L 908.0,100.0 L 1167.0,100.0 L 1167.0,113.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<text x="1037.0" y="95.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="10.5" font-weight="400" fill="#707b8e" text-anchor="middle">EEG</text>
-<text x="1037.0" y="184.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="10.5" font-weight="400" fill="#707b8e" text-anchor="middle">MEG: common head position</text>
-<rect x="16" y="242" width="1368" height="86" rx="18" fill="none" stroke="#c9ced6" stroke-width="1.3" stroke-dasharray="8 6"/>
-<polygon points="42,259 290,259 278,311 30,311" fill="#edf7e8" stroke="#9ccb82" stroke-width="1.5" stroke-linejoin="round"/>
-<text x="160.0" y="282.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="14.5" font-weight="600" fill="#28481c" text-anchor="middle">BIDS raw data</text>
-<text x="160.0" y="299.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#28481c" text-anchor="middle">per run</text>
-<polygon points="424,259 712,259 700,311 412,311" fill="#edf7e8" stroke="#9ccb82" stroke-width="1.5" stroke-linejoin="round"/>
-<text x="562.0" y="282.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="14.5" font-weight="600" fill="#28481c" text-anchor="middle">QC report</text>
-<text x="562.0" y="299.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#28481c" text-anchor="middle">HTML · outlying recordings</text>
-<polygon points="846,259 1084,259 1072,311 834,311" fill="#edf7e8" stroke="#9ccb82" stroke-width="1.5" stroke-linejoin="round"/>
-<text x="959.0" y="282.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="14.5" font-weight="600" fill="#28481c" text-anchor="middle">Preprocessed runs</text>
-<text x="959.0" y="299.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#28481c" text-anchor="middle">desc-preproc · provenance</text>
-<polygon points="1132,259 1370,259 1358,311 1120,311" fill="#edf7e8" stroke="#9ccb82" stroke-width="1.5" stroke-linejoin="round"/>
-<text x="1245.0" y="282.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="14.5" font-weight="600" fill="#28481c" text-anchor="middle">Epochs</text>
-<text x="1245.0" y="299.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#28481c" text-anchor="middle">per session · desc-epochs</text>
-<path d="M 160.0,216.0 L 160.0,257.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 278.0,273.0 L 304.0,273.0 L 304.0,160.0 L 319.0,160.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 562.0,216.0 L 562.0,257.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 908.0,259.0 L 908.0,190.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1296.0,168.0 L 1296.0,257.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<rect x="86" y="354" width="1298" height="250" rx="14" fill="#f4f7fc" stroke="#cfdaee" stroke-width="1.5"/>
-<text x="106.0" y="384.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="17" font-weight="600" fill="#1c2740" text-anchor="start">Preprocessing · one pipeline per run</text>
-<text x="442.4" y="383.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#2f5fb3" text-anchor="start">meu.steps</text>
-<text x="1368.0" y="592.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11" font-weight="400" fill="#707b8e" text-anchor="end">mne · pyprep · mne-denoise · mne-icalabel</text>
-<text x="120.0" y="402.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11.5" font-weight="600" fill="#707b8e" text-anchor="start">EEG</text>
-<rect x="120" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="195.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Bridged electrodes</text>
-<text x="195.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">BridgedElectrodes()</text>
-<rect x="303" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="378.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">High-pass</text>
-<text x="378.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Filter(0.1, None)</text>
-<rect x="486" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="561.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Line noise</text>
-<text x="561.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">LineNoise()</text>
-<rect x="669" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="744.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Bad channels</text>
-<text x="744.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">BadChannels(&quot;prep&quot;)</text>
-<rect x="852" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="927.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Interpolate</text>
-<text x="927.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Interpolate()</text>
-<rect x="1035" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1110.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Re-reference</text>
-<text x="1110.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Reference()</text>
-<rect x="1218" y="410" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1293.0" y="433.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">ICA · ICLabel</text>
-<text x="1293.0" y="451.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">ICA()</text>
-<path d="M 272.0,436.0 L 300.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 455.0,436.0 L 483.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 638.0,436.0 L 666.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 821.0,436.0 L 849.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1004.0,436.0 L 1032.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1187.0,436.0 L 1215.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<text x="120.0" y="496.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11.5" font-weight="600" fill="#707b8e" text-anchor="start">MEG</text>
-<rect x="120" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="195.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Bad channels</text>
-<text x="195.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">BadChannels(&quot;maxwell&quot;)</text>
-<rect x="303" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="378.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">SSS</text>
-<text x="378.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Maxwell()</text>
-<rect x="486" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="561.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">High-pass</text>
-<text x="561.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Filter(0.1, None)</text>
-<rect x="669" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="744.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Resample</text>
-<text x="744.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">Resample(250)</text>
-<rect x="852" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="927.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">Line noise</text>
-<text x="927.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">LineNoise()</text>
-<rect x="1218" y="504" width="150" height="52" rx="7" fill="white" stroke="#2f5fb3" stroke-width="1.4"/>
-<text x="1293.0" y="527.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="600" fill="#1c2740" text-anchor="middle">ICA · MEGnet</text>
-<text x="1293.0" y="545.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10.5" font-weight="400" fill="#2f5fb3" text-anchor="middle">ICA(labeler=&quot;megnet&quot;)</text>
-<path d="M 272.0,530.0 L 300.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 455.0,530.0 L 483.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 638.0,530.0 L 666.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 821.0,530.0 L 849.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 1004.0,530.0 L 1215.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<text x="378.0" y="570.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="10.5" font-weight="400" fill="#707b8e" text-anchor="middle">CTF: Reference() · KIT: Regression()</text>
-<text x="735.0" y="592.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="11.5" font-weight="400" fill="#707b8e" text-anchor="middle">Presets eeg-erp · eeg-rest · meg-erp · meg-rest · had-meeg are ordinary pipelines: set_params, replace, insert or remove any step</text>
-<path d="M 52.0,311.0 L 52.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round"/>
-<path d="M 52.0,436.0 L 117.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<path d="M 52.0,530.0 L 117.0,530.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
-<circle cx="52" cy="436.0" r="2.6" fill="#3b4a60"/>
-<path d="M 1368.0,436.0 L 1377.0,436.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round"/>
-<path d="M 1368.0,530.0 L 1377.0,530.0 L 1377.0,341.0 L 959.0,341.0 L 959.0,314.0" fill="none" stroke="#3b4a60" stroke-width="1.5" stroke-linejoin="round" marker-end="url(#head)"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 360" width="1400" height="360" role="img" aria-labelledby="title desc">
+<title id="title">meeg-utils: read, check, preprocess, epoch</title>
+<desc id="desc">Recordings are read with their BIDS sidecars (meu.io), checked by the acquisition QC (meu.qc), preprocessed run by run in an EEG or an MEG lane (meu.steps), and epoched and combined per session (meu.epochs).</desc>
+<rect width="1400" height="360" fill="white"/>
+<path d="M120,92 H1280" stroke="#1d1d1f" stroke-width="2"/>
+<circle cx="120" cy="92" r="7" fill="white" stroke="#1d1d1f" stroke-width="2"/>
+<text x="120.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="20" font-weight="600" fill="#1d1d1f" text-anchor="middle">Read</text>
+<text x="120.0" y="122.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#0a66d6" text-anchor="middle">meu.io</text>
+<circle cx="400" cy="92" r="7" fill="white" stroke="#1d1d1f" stroke-width="2"/>
+<text x="400.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="20" font-weight="600" fill="#1d1d1f" text-anchor="middle">Check</text>
+<text x="400.0" y="122.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#0a66d6" text-anchor="middle">meu.qc</text>
+<circle cx="760" cy="92" r="7" fill="white" stroke="#1d1d1f" stroke-width="2"/>
+<text x="760.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="20" font-weight="600" fill="#1d1d1f" text-anchor="middle">Preprocess</text>
+<text x="760.0" y="122.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#0a66d6" text-anchor="middle">meu.steps</text>
+<circle cx="1280" cy="92" r="7" fill="white" stroke="#1d1d1f" stroke-width="2"/>
+<text x="1280.0" y="70.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="20" font-weight="600" fill="#1d1d1f" text-anchor="middle">Epoch</text>
+<text x="1280.0" y="122.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="12.5" font-weight="400" fill="#0a66d6" text-anchor="middle">meu.epochs</text>
+<text x="120.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">BIDS sidecars, any system</text>
+<text x="400.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">fail · warn · ok · info</text>
+<text x="760.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">one pipeline per run</text>
+<text x="1280.0" y="142.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#6e6e73" text-anchor="middle">runs combined per session</text>
+<path d="M236,200 H1280" stroke="#c7c7cc" stroke-width="1.5"/>
+<text x="222.0" y="204.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">EEG</text>
+<circle cx="310.6" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="310.6" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Bridged electrodes</text>
+<text x="310.6" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">BridgedElectrodes</text>
+<circle cx="459.7" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="459.7" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">High-pass</text>
+<text x="459.7" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Filter</text>
+<circle cx="608.9" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="608.9" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Line noise</text>
+<text x="608.9" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">LineNoise</text>
+<circle cx="758.0" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="758.0" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Bad channels</text>
+<text x="758.0" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">BadChannels</text>
+<circle cx="907.1" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="907.1" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Interpolate</text>
+<text x="907.1" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Interpolate</text>
+<circle cx="1056.3" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="1056.3" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Re-reference</text>
+<text x="1056.3" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Reference</text>
+<circle cx="1205.4" cy="200" r="3.5" fill="#1d1d1f"/>
+<text x="1205.4" y="187.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">ICA · ICLabel</text>
+<text x="1205.4" y="220.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">ICA</text>
+<path d="M236,290 H1280" stroke="#c7c7cc" stroke-width="1.5"/>
+<text x="222.0" y="294.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="600" fill="#6e6e73" text-anchor="end">MEG</text>
+<circle cx="323.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="323.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Bad channels</text>
+<text x="323.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">BadChannels</text>
+<circle cx="497.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="497.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">SSS</text>
+<text x="497.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Maxwell</text>
+<circle cx="671.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="671.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">High-pass</text>
+<text x="671.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Filter</text>
+<circle cx="845.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="845.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Resample</text>
+<text x="845.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">Resample</text>
+<circle cx="1019.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="1019.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">Line noise</text>
+<text x="1019.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">LineNoise</text>
+<circle cx="1193.0" cy="290" r="3.5" fill="#1d1d1f"/>
+<text x="1193.0" y="277.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#1d1d1f" text-anchor="middle">ICA · MEGnet</text>
+<text x="1193.0" y="310.0" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="10" font-weight="400" fill="#6e6e73" text-anchor="middle">ICA</text>
+<path d="M760,156 V170 H176 V290 H192" fill="none" stroke="#c7c7cc" stroke-width="1.5"/>
+<path d="M176,200 H192" stroke="#c7c7cc" stroke-width="1.5"/>
+<text x="700.0" y="346.0" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="12" font-weight="400" fill="#aeaeb2" text-anchor="middle">Presets are ordinary pipelines: change, replace or remove any step.</text>
 </svg>
