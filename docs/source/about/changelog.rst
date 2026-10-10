@@ -40,6 +40,10 @@ Changed
   max_bpm)``, ``Impedance(warn_kohm)``, ``ChpiSNR(max_drop_db)``,
   ``EmptyRoom(max_days)`` now default to ``None``. Dataset-level outliers
   (``inspect_dataset``, ``meu report``) cover them.
+* ``BadChannels("prep")`` no longer runs PyPREP's band-power criterion
+  (``find_bad_by_PSD``), which is not part of PREP and flags frontal
+  channels for their blink power (three in MNE's sample EEG); ``psd=True``
+  turns it on.
 * ``meu.Dataset`` leaves out empty-room recordings.
 * ``steps.AutoReject`` runs on the MEG/EEG and reference channels only,
   working around an autoreject indexing error when other channels come

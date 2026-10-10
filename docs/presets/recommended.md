@@ -27,7 +27,7 @@ epochs = meu.epochs.combine([ep.fit_transform(run) for run in clean])
 | 1 | `bridged` | `BridgedElectrodes()`：MNE `compute_bridged_electrodes` 的默认值（电距离，0.5–30 Hz，2 s 窗） | MNE 默认值；电距离方法见 Tenke & Kayser (2001)。**本库选择**纳入这一步：桥接电极会让后面的 PREP 和 ICA 出错，且需要电极位置的步骤（PREP RANSAC、插值）本来就要求有 montage |
 | 2 | `highpass` | `Filter(0.1, None)` | Tanner, Morgan-Short & Luck (2015, *Psychophysiology* 52:997)：0.3 Hz 及以上的高通会在 ERP 中造成假效应，建议 ≤ 0.1 Hz。此处不加低通：ICLabel 需要 1–100 Hz 的信息 |
 | 3 | `line_noise` | `LineNoise("zapline-plus")`，工频取自数据（BIDS `PowerLineFrequency`） | Klug & Kloosterman (2022, *Hum Brain Mapp* 43:2743)。MNE-BIDS-Pipeline 默认不去工频（`notch_freq=None`）；**本库选择** ZapLine-plus 是因为它只去除与工频相关的空间成分，不像陷波那样在频谱上挖洞 |
-| 4 | `bads` | `BadChannels("prep")`：PyPREP 默认值，全部判据（含 RANSAC） | Bigdely-Shamlo et al. (2015, *Front Neuroinform* 9:16) |
+| 4 | `bads` | `BadChannels("prep")`：PyPREP 默认阈值，PREP 原文的全部判据（含 RANSAC） | Bigdely-Shamlo et al. (2015, *Front Neuroinform* 9:16)。不含 PyPREP 新增、原文没有的频带功率判据（`find_bad_by_PSD`）：在 MNE sample 数据上它额外把 3 个额区电极判为坏道（眨眼的低频功率），插值后 ICA 就去不掉这些电极上的眨眼了；需要时用 `psd=True` 打开 |
 | 5 | `interpolate` | `Interpolate()`：球面样条 | Perrin et al. (1989)；MNE 默认 |
 | 6 | `reference` | `Reference("average")` | ICLabel 的训练数据是平均参考（Pion-Tonachini et al., 2019, *NeuroImage* 198:181；mne-icalabel 文档）；MNE-BIDS-Pipeline 默认 `eeg_reference="average"`（`_config.py:337`） |
 | 7 | `ica` | `ICA(n_components=0.999999, method="infomax"（extended）, labeler="iclabel", threshold=0.8)`，在 1–100 Hz 副本上拟合 | extended Infomax 与 1–100 Hz：ICLabel 的训练条件（同上）；`0.999999`：MNE-BIDS-Pipeline 默认（`_config.py:1519`，为避免秩亏数据出问题，几乎保留全部主成分）；`0.8`：MNE-BIDS-Pipeline 默认的 ICLabel 排除阈值（`ica_exclusion_thresholds`，`_config.py:1618`） |

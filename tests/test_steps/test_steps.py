@@ -171,6 +171,20 @@ class TestBadChannels:
 
     """BadChannels and Interpolate."""
 
+    def test_psd_criterion_is_opt_in(self, eeg_bad: BaseRaw) -> None:
+        """PyPREP's band-power criterion is not PREP's: off unless asked, and PyPREP is
+        left as it was."""
+        from pyprep.find_noisy_channels import NoisyChannels
+
+        original = NoisyChannels.find_bad_by_PSD
+        step = S.BadChannels("prep", ransac=False).fit(eeg_bad)
+        assert "PREP psd" not in step.scores_
+        assert step.qc_["eeg"]["by_criterion"]["psd"] == []
+        assert NoisyChannels.find_bad_by_PSD is original
+        step = S.BadChannels("prep", ransac=False, psd=True).fit(eeg_bad)
+        assert "PREP psd" in step.scores_
+        assert NoisyChannels.find_bad_by_PSD is original
+
     @pytest.mark.parametrize("ransac", [False, True])
     def test_prep_finds_noisy_and_flat(self, ransac: bool, eeg_bad: BaseRaw) -> None:
         """PREP flags the simulated noisy and flat channels, and only marks them."""

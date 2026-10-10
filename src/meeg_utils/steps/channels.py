@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import contextlib
 import warnings
+from collections.abc import Iterator
 from typing import Any, ClassVar
 
 import numpy as np
@@ -24,6 +26,30 @@ _PREP_SCORES = {
 }
 
 BAD_CHANNEL_METHODS = ("auto", "prep", "maxwell")
+
+
+@contextlib.contextmanager
+def _pyprep_psd(enabled: bool) -> Iterator[None]:
+    """Run PyPREP with or without its PSD criterion.
+
+    ``NoisyChannels.find_all_bads`` always runs ``find_bad_by_PSD`` (unless
+    ``matlab_strict``, which also changes the other criteria), and the robust
+    reference calls it internally, so the criterion is switched off on the
+    class for the duration of the detection.
+    """
+    from pyprep.find_noisy_channels import NoisyChannels
+
+    if enabled:
+        yield
+        return
+    original = NoisyChannels.find_bad_by_PSD
+    NoisyChannels.find_bad_by_PSD = lambda *_args, **_kwargs: None
+    try:
+        yield
+    finally:
+        NoisyChannels.find_bad_by_PSD = original
+
+
 _MAXWELL_SYSTEMS = frozenset({"neuromag", "ctf"})
 
 
@@ -37,7 +63,7 @@ class BadChannels(Step):
     ----------
     method : {"auto", "prep", "maxwell"}
         - ``"prep"``: PREP noisy-channel detection for EEG (Bigdely-Shamlo et
-          al., 2015) via PyPREP, running all PREP criteria: NaN/flat,
+          al., 2015) via PyPREP, running the PREP criteria: NaN/flat,
           deviation, high-frequency noise, correlation, low SNR and,
           optionally, RANSAC.
         - ``"maxwell"``: :func:`mne.preprocessing.find_bad_channels_maxwell`
@@ -47,6 +73,14 @@ class BadChannels(Step):
           because no validated default exists for them.
     ransac : bool
         PREP: also run RANSAC, which needs electrode positions.
+    psd : bool
+        PREP: also run PyPREP's band-power criterion (``find_bad_by_PSD``,
+        robust z > 3 in 1-15, 15-30 or 30-45 Hz), which PyPREP adds to
+        PREP ("not present in the original MATLAB PREP"). Off by default:
+        it flags frontal channels, whose low-frequency power includes the
+        blinks (in MNE's sample EEG, EEG 001, 004 and 007 were flagged by
+        it alone), and these would then be interpolated before ICA could
+        remove the blinks.
     robust_reference : bool
         PREP: detect the bad channels after PREP's robust average reference
         (pyprep's ``Reference``: iteratively re-reference to the average of
@@ -103,6 +137,7 @@ class BadChannels(Step):
         method: str = "auto",
         *,
         ransac: bool = True,
+        psd: bool = False,
         robust_reference: bool = True,
         random_state: int | None = 42,
         reject_by_annotation: str | None = None,
@@ -114,6 +149,7 @@ class BadChannels(Step):
     ) -> None:
         self.method = method
         self.ransac = ransac
+        self.psd = psd
         self.robust_reference = robust_reference
         self.random_state = random_state
         self.reject_by_annotation = reject_by_annotation
@@ -156,8 +192,6 @@ class BadChannels(Step):
     # ------------------------------------------------------------------
 
     def _prep(self, inst: BaseRaw) -> tuple[list[str], dict[str, list[str]], int]:
-        from pyprep.find_noisy_channels import NoisyChannels
-
         eeg = inst.copy().pick("eeg", exclude=[])
         if self.ransac:
             pos = np.array([ch["loc"][:3] for ch in eeg.info["chs"]])
@@ -167,6 +201,29 @@ class BadChannels(Step):
                     "(raw.set_montage) or use BadChannels(ransac=False)."
                 )
         manual = [ch for ch in inst.info["bads"] if ch in eeg.ch_names]
+        with _pyprep_psd(self.psd):
+            detected, extra = self._prep_detect(eeg, manual)
+        for name, (group, key, label, threshold) in _PREP_SCORES.items():
+            values = extra.get(group, {}).get(key)
+            if values is not None and np.ndim(values) == 1 and len(values) == len(eeg.ch_names):
+                self.scores_[f"PREP {name}"] = {
+                    "ch_names": list(eeg.ch_names),
+                    "values": np.asarray(values, dtype=float),
+                    "threshold": threshold,
+                    "label": label,
+                }
+        by_criterion = {
+            key.removeprefix("bad_by_"): sorted(map(str, chs))
+            for key, chs in detected.items()
+            if key not in ("bad_all", "bad_by_manual")
+        }
+        found = sorted({ch for chs in by_criterion.values() for ch in chs} - set(manual))
+        return found, by_criterion, len(eeg.ch_names)
+
+    def _prep_detect(self, eeg: BaseRaw, manual: list[str]) -> tuple[dict, dict]:
+        """Run PyPREP's detection; return the bad channels by criterion and the diagnostics."""
+        from pyprep.find_noisy_channels import NoisyChannels
+
         if self.robust_reference:
             from pyprep.reference import Reference as _RobustReference
 
@@ -198,22 +255,7 @@ class BadChannels(Step):
             finder.find_all_bads(ransac=self.ransac)
             detected = finder.get_bads(as_dict=True)
             extra = finder._extra_info
-        for name, (group, key, label, threshold) in _PREP_SCORES.items():
-            values = extra.get(group, {}).get(key)
-            if values is not None and np.ndim(values) == 1 and len(values) == len(eeg.ch_names):
-                self.scores_[f"PREP {name}"] = {
-                    "ch_names": list(eeg.ch_names),
-                    "values": np.asarray(values, dtype=float),
-                    "threshold": threshold,
-                    "label": label,
-                }
-        by_criterion = {
-            key.removeprefix("bad_by_"): sorted(map(str, chs))
-            for key, chs in detected.items()
-            if key not in ("bad_all", "bad_by_manual")
-        }
-        found = sorted({ch for chs in by_criterion.values() for ch in chs} - set(manual))
-        return found, by_criterion, len(eeg.ch_names)
+        return detected, extra
 
     def _maxwell(self, inst: BaseRaw) -> tuple[list[str], dict[str, list[str]], int]:
         from mne.preprocessing import find_bad_channels_maxwell

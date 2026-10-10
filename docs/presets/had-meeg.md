@@ -21,7 +21,7 @@ pipe.plot(inst=raw) # 每一步的质量图
 |---|---|---|---|
 | 1 | `filter` | `Filter(0.1, 100)` | 同左 |
 | 2 | `resample` | `Resample(250)` | 同左 |
-| 3 | `bads` | `BadChannels("maxwell", origin=(0, 0, 0.04))`，在 grade-0 补偿的副本上检测（CTF 没有 cross-talk / fine-cal 文件，`"auto"` 时自动不用） | `BadChannels("prep")`，PREP 全部判据 |
+| 3 | `bads` | `BadChannels("maxwell", origin=(0, 0, 0.04))`，在 grade-0 补偿的副本上检测（CTF 没有 cross-talk / fine-cal 文件，`"auto"` 时自动不用） | `BadChannels("prep")`，PREP 原文的全部判据 |
 | 4 | `interpolate` | `Interpolate(origin=(0, 0, 0.04))`，MNE 场插值 | `Interpolate()`，球面样条 |
 | 5 | `line_noise` | `LineNoise("zapline-plus")`，工频取自数据 | 同左 |
 | 6 | `reference` | `Reference(eeg=None, ctf_grade=3)` | `Reference(eeg="average")` |
@@ -62,13 +62,13 @@ pipe.plot(inst=raw) # 每一步的质量图
 
   人工改动的标签记录在 `qc_["manual_labels"]` 里，用 `meu.io.save_derivative(..., pipeline=pipe)` 保存时会一起写进旁注文件。
 
-### 2.4 EEG 坏道检测：PREP 全部判据，并在稳健平均参考下检测（中）
+### 2.4 EEG 坏道检测：PREP 原文的全部判据，并在稳健平均参考下检测（中）
 
 - **原做法**：PyPREP 只运行相关性、偏离度和 RANSAC 三个判据（`src/prep/bad_chs.py:71-73`），再加上初始化时自动做的 NaN/平坦检测；检测直接在记录本身的参考上进行，平均参考在之后才做（`src/prep/pipe_single.py:171`）。
 - **问题**：
   - 漏掉了高频噪声和低信噪比判据。PREP 原文（Bigdely-Shamlo et al., 2015）的流程是全部判据一起用。
   - PREP 原文先估计稳健平均参考，再在这个参考下检测坏道。不这样做时，紧挨参考电极的通道信号很小、与其他通道相关性低，会被相关性判据误判。真实数据中的例子：ds007353 sub-01 的 EEG（Neuroscan，参考电极在 Cz 附近），C1 和 Cz 在 1–30 Hz 只有约 0.4 µV（周围电极 2–3 µV），原做法把它们判为坏道并插值；在稳健平均参考下它们是正常通道。
-- **修正**：运行全部判据（`find_all_bads`），并用 PyPREP 的 `Reference` 做稳健平均参考后再检测（`BadChannels(robust_reference=True)`，默认；数据本身不被重参考）。原参考下的检测结果仍记录在 `qc_["bads"]["eeg_before_reference"]`，便于对比。`pipe["bads"].plot("scores")` 画出每个判据下各通道的分数和阈值。
+- **修正**：运行 PREP 原文的全部判据（偏离度、高频噪声、相关性、低信噪比、RANSAC；不含 PyPREP 新增的频带功率判据 `find_bad_by_PSD`，它会因眨眼把额区电极判为坏道，可用 `BadChannels(psd=True)` 打开），并用 PyPREP 的 `Reference` 做稳健平均参考后再检测（`BadChannels(robust_reference=True)`，默认；数据本身不被重参考）。原参考下的检测结果仍记录在 `qc_["bads"]["eeg_before_reference"]`，便于对比。`pipe["bads"].plot("scores")` 画出每个判据下各通道的分数和阈值。
 
 ### 2.5 只滤波一次（中）
 

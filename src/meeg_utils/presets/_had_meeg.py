@@ -32,7 +32,7 @@ def had_meeg(
       least 0.8 (the original removed every arg-max artifact label and
       relied on manual review, which remains possible with
       :meth:`~meeg_utils.steps.ICA.relabel`);
-    - EEG bad channels: all PREP criteria instead of three;
+    - EEG bad channels: all criteria of the PREP paper instead of three;
     - the data are filtered once (the original filtered again before
       applying ICA) and ``first_samp`` is preserved.
 
