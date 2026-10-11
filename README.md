@@ -5,108 +5,48 @@
 [![PyPI version](https://badge.fury.io/py/meeg-utils.svg)](https://badge.fury.io/py/meeg-utils)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Code style: ruff](https://img.shields.io/badge/code%20style-ruff-000000.svg)](https://github.com/astral-sh/ruff)
-[![codecov](https://codecov.io/gh/colehank/meeg-utils/branch/main/graph/badge.svg)](https://codecov.io/gh/colehank/meeg-utils)
 
-> A Python-based MEG/EEG processing toolkit built on MNE-Python, providing a high-level, user-friendly API for processing MEG/EEG data.
+MEG/EEG quality control, preprocessing and epoching on top of
+[MNE-Python](https://mne.tools): scikit-learn style steps with documented
+defaults, QC metrics and figures for every step, BIDS in and out.
 
-## Features
-### Preprocessing
-*Epoching In Progress*
-- High-level `PreprocessingPipeline` class for streamlined MEG/EEG preprocessing.
-![Pipeline Diagram](resources/preprocessing_pipeline.png)
+![meeg-utils modules: io, qc, steps, Pipeline, presets, epochs, Dataset, report and the meu command](resources/architecture.svg)
 
-### Feature Extraction
-*In Progress*
-- Common MEG/EEG features (e.g., power spectral density, connectivity metrics).
+```python
+import meeg_utils as meu
 
-## 📦 Installation
+raw = meu.io.read("bids/sub-01/eeg/sub-01_task-oddball_eeg.vhdr")
+meu.qc.inspect(raw)                          # how well was it recorded?
+
+pipe = meu.Pipeline.preset("eeg-erp")        # every parameter has a cited source
+clean = pipe.fit_transform(raw)
+pipe.plot(inst=raw)                          # figures of every step
+```
+
+Or a whole BIDS dataset from the command line:
+
+```bash
+meu qc bids/ --out qc/
+meu run --preset eeg-erp --epochs --option "event_id=[target, standard]" \
+    --sources bids/ --out bids/derivatives/meu
+```
+
+- **Acquisition QC**: bridged electrodes, flat channels, line noise, head
+  movement, SQUID jumps, empty room, BIDS metadata, ...
+- **Steps** for every system MNE reads: PREP, ZapLine-plus, SSS/tSSS, HFC,
+  ICA with ICLabel/MEGnet, autoreject, ...
+- **Presets**: `eeg-erp`, `eeg-rest`, `meg-erp`, `meg-rest`, `had-meeg`.
+
+## Installation
 
 ```bash
 pip install meeg-utils
 ```
 
-## 🚀 Quick Start
+## Documentation
 
-```python
-from meeg_utils.preprocessing import PreprocessingPipeline
-from mne_bids import BIDSPath
+[Tutorials, user guide and API](https://colehank.github.io/meeg-utils/) ·
+[design notes](docs/design/architecture.md) (Chinese) ·
+[validation on real data](docs/validation/ds007353-sub-01.md) (Chinese)
 
-# Create pipeline
-pipeline = PreprocessingPipeline(
-    input_path=BIDSPath(
-        subject="01", session="01", task="rest",
-        datatype="eeg", root="/data/bids"
-    ),
-    output_dir="/data/output"
-)
-
-# Run preprocessing
-result = pipeline.run(
-    filter_params={"highpass": 0.1, "lowpass": 100.0, "sfreq": 250.0},
-    detect_bad_channels=True,
-    remove_line_noise=True,
-    apply_ica=True
-)
-
-# Save results
-pipeline.save()
-```
-
-**Batch processing:**
-
-```python
-from meeg_utils.preprocessing import BatchPreprocessingPipeline
-
-# Process multiple subjects in parallel
-batch = BatchPreprocessingPipeline(
-    input_paths=bids_paths,  # List of BIDSPaths
-    output_dir="/data/output",
-    n_jobs=4  # Use 4 parallel workers
-)
-
-batch.run(detect_bad_channels=True, remove_line_noise=True, apply_ica=True)
-```
-
-## 📚 Documentation
-
-**Full documentation:** https://colehank.github.io/meeg-utils/
-
-- [Installation Guide](https://colehank.github.io/meeg-utils/user_guide/installation.html)
-- [Quick Start](https://colehank.github.io/meeg-utils/user_guide/quickstart.html)
-- [Preprocessing Guide](https://colehank.github.io/meeg-utils/user_guide/preprocessing.html)
-- [Batch Processing](https://colehank.github.io/meeg-utils/user_guide/batch_processing.html)
-- [API Reference](https://colehank.github.io/meeg-utils/api/preprocessing.html)
-- [Contributing Guide](https://colehank.github.io/meeg-utils/developer/contributing.html)
-
-## 🛠️ Development
-
-```bash
-# Clone and setup
-git clone https://github.com/colehank/meeg-utils.git
-cd meeg-utils
-uv sync --dev
-uv run pre-commit install
-
-# Run tests
-uv run pytest
-
-# Build docs
-cd docs && uv run make html
-```
-
-See the [Contributing Guide](https://colehank.github.io/meeg-utils/developer/contributing.html) for detailed development instructions.
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-Built on the excellent [MNE-Python](https://mne.tools/) ecosystem.
-
-## 📞 Support
-
-- 📖 [Documentation](https://colehank.github.io/meeg-utils/)
-- 🐛 [Issue Tracker](https://github.com/colehank/meeg-utils/issues)
-- 💬 [Discussions](https://github.com/colehank/meeg-utils/discussions)
+MIT License.

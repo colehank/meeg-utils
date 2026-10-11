@@ -13,86 +13,68 @@ meeg-utils Documentation
    :target: https://github.com/astral-sh/ruff
    :alt: Code style: ruff
 
-A Python-based MEG/EEG processing toolkit built on MNE-Python, providing a high-level,
-user-friendly API for preprocessing electrophysiological data.
+MEG and EEG quality control, preprocessing and epoching on top of
+`MNE-Python <https://mne.tools>`_: scikit-learn style steps with documented
+defaults, QC metrics and figures for every step, BIDS in and out.
 
-Features
---------
-
-* **High-level API** - Simple, intuitive interface for complex preprocessing pipelines
-* **BIDS Support** - Native support for Brain Imaging Data Structure (BIDS)
-* **Advanced Preprocessing**:
-
-  * Automated bad channel detection (PREP pipeline for EEG, Maxwell filtering for MEG)
-  * Line noise removal (Zapline/Zapline-iter)
-  * ICA-based artifact removal with automatic labeling (ICLabel for EEG, MEGNet for MEG)
-
-* **Batch Processing** - Parallel processing of multiple datasets
-* **Type-safe** - Full type hints for better IDE support
-* **Well-tested** - Comprehensive test suite with >80% coverage
-
-Quick Start
------------
-
-Installation
-~~~~~~~~~~~~
-
-.. code-block:: bash
-
-   pip install meeg-utils
-
-Basic Usage
-~~~~~~~~~~~
+.. image:: _static/architecture.svg
+   :alt: meeg-utils modules: io, qc, steps, Pipeline, presets, epochs, Dataset, report and the meu command
+   :width: 100%
 
 .. code-block:: python
 
-   from meeg_utils.preprocessing import PreprocessingPipeline
-   from mne_bids import BIDSPath
+   import meeg_utils as meu
 
-   # Define input
-   bids_path = BIDSPath(
-       subject="01",
-       session="01",
-       task="rest",
-       datatype="eeg",
-       root="/path/to/bids/dataset"
-   )
+   raw = meu.io.read("bids/sub-01/eeg/sub-01_task-oddball_eeg.vhdr")
+   meu.qc.inspect(raw)                     # how well was it recorded?
+   pipe = meu.Pipeline.preset("eeg-erp")   # every parameter has a cited source
+   clean = pipe.fit_transform(raw)
+   pipe.plot(inst=raw)                     # figures of every step
 
-   # Create and run pipeline
-   pipeline = PreprocessingPipeline(
-       input_path=bids_path,
-       output_dir="/path/to/output"
-   )
+New here? Start with the :ref:`tutorials`: they run on real data and show
+what every step does.
 
-   raw_preprocessed = pipeline.run(
-       filter_params={"highpass": 0.1, "lowpass": 100.0, "sfreq": 250.0},
-       detect_bad_channels=True,
-       remove_line_noise=True,
-       apply_ica=True,
-   )
+- :ref:`tutorials`: :ref:`tut-quickstart`, :ref:`tut-qc`,
+  :ref:`tut-pipelines`, :ref:`tut-epochs`, :ref:`tut-datasets`
+- User guide: :doc:`user_guide/installation`, :doc:`user_guide/steps`,
+  :doc:`user_guide/qc`, :doc:`user_guide/presets`,
+  :doc:`user_guide/batch_processing`, :doc:`user_guide/cli`
+- :doc:`api/index`: every function and parameter
+- :doc:`about/changelog`
 
-   # Save results
-   pipeline.save()
+Analysis (ERP/ERF measures, spectra, time-frequency, group statistics) is
+planned; the outputs are plain MNE objects, so MNE's own analysis tools
+apply directly.
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
+   :caption: Tutorials
+
+   auto_tutorials/index
+
+.. toctree::
+   :maxdepth: 2
+   :hidden:
    :caption: User Guide
 
    user_guide/installation
-   user_guide/quickstart
-   user_guide/preprocessing
+   user_guide/steps
+   user_guide/qc
+   user_guide/presets
    user_guide/batch_processing
+   user_guide/cli
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: API Reference
 
-   api/preprocessing
-   api/pipeline
-   api/batch
+   api/index
 
 .. toctree::
    :maxdepth: 2
+   :hidden:
    :caption: Developer Guide
 
    developer/contributing
@@ -102,14 +84,8 @@ Basic Usage
 
 .. toctree::
    :maxdepth: 1
+   :hidden:
    :caption: About
 
    about/changelog
    about/license
-
-Indices and tables
-==================
-
-* :ref:`genindex`
-* :ref:`modindex`
-* :ref:`search`

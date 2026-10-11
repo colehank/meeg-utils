@@ -1,339 +1,89 @@
-Batch Processing
+Batch processing
 ================
 
-Process multiple datasets efficiently using parallel processing.
+.. seealso::
 
-Basic Usage
------------
+   :ref:`tut-datasets` processes a small BIDS dataset end to end.
 
-.. code-block:: python
 
-   from meeg_utils.preprocessing import BatchPreprocessingPipeline
-   from mne_bids import BIDSPath
-
-   # Define multiple inputs
-   bids_paths = [
-       BIDSPath(
-           subject=f"{i:02d}",
-           session="01",
-           task="rest",
-           datatype="eeg",
-           root="/path/to/bids/dataset"
-       )
-       for i in range(1, 21)  # Process 20 subjects
-   ]
-
-   # Create batch pipeline
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=4  # Use 4 parallel workers
-   )
-
-   # Run batch processing
-   batch.run()
-
-Parallel Processing
--------------------
-
-Control the number of parallel jobs:
+:func:`meeg_utils.process` runs one pipeline over many recordings. Each
+recording gets its own clone of the pipeline, fitted on that recording only,
+and the result is saved with :func:`meeg_utils.io.save_derivative`.
 
 .. code-block:: python
 
-   # Sequential processing (n_jobs=1)
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=1
-   )
+   import meeg_utils as meu
+   from mne_bids import find_matching_paths
 
-   # Parallel processing
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=4  # 4 parallel workers
-   )
+   pipe = meu.Pipeline.preset("had-meeg", datatype="eeg")
+   recordings = find_matching_paths("bids", datatypes="eeg", extensions=".vhdr")
 
-   # Use all available CPUs
-   import multiprocessing
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=multiprocessing.cpu_count()
-   )
+   records = meu.process(pipe, recordings, "bids/derivatives/meu", n_jobs=8)
 
-**Note:** Each worker uses 1 CPU core. Don't set n_jobs higher than available cores.
+``sources`` can mix :class:`~mne_bids.BIDSPath` objects and plain paths;
+paths inside a BIDS dataset are named like BIDS paths
+(``sub-01/eeg/sub-01_task-rest_desc-preproc_eeg.fif``), other files are
+written to the root as ``<name>_desc-preproc_<datatype>.fif``.
 
-Custom Parameters
------------------
+Whole datasets
+--------------
 
-Apply same preprocessing to all files:
+:class:`meeg_utils.Dataset` selects the recordings of a BIDS dataset and
+groups the runs of each session and task; :func:`meeg_utils.process_dataset`
+takes them through every stage:
 
 .. code-block:: python
 
-   batch.run(
-       filter_params={
-           "highpass": 0.1,
-           "lowpass": 100.0,
-           "sfreq": 250.0
-       },
-       detect_bad_channels=True,
-       remove_line_noise=True,
-       apply_ica=True,
-       ica_params={"n_components": 20}
+   ds = meu.Dataset("bids", datatype="meg", tasks=["faces"], exclude=["sub-07"])
+   result = meu.process_dataset(
+       ds, "bids/derivatives/meu",
+       preprocessing=meu.Pipeline.preset("meg-erp", system="neuromag"),
+       epochs=meu.Pipeline.preset("meg-erp", stage="epochs", event_id=["face", "house"]),
+       n_jobs=8,
    )
+   result.to_csv("bids/derivatives/meu/batch.csv")
+   result.failed          # one record per failed run or session
 
-Skip Existing Files
--------------------
+1. every run is preprocessed with its own copy of the pipeline (``desc-preproc``);
+2. per session and task, MEG runs are mapped to their average head
+   position (``align="average"``), and each run is epoched (``desc-epochs``,
+   with the run entity);
+3. the runs are combined (:func:`meeg_utils.epochs.combine`) into one file
+   without the run entity, e.g. ``sub-01_task-faces_desc-epochs_epo.fif``,
+   whose sidecar lists the runs.
 
-Resume interrupted batch processing:
+Outputs that exist are skipped by default (``skip_existing=True``), so
+calling it again resumes an interrupted batch and retries what failed.
+From the command line: ``meu run --preset meg-erp --epochs --option
+"event_id=[face, house]" --sources bids --out bids/derivatives/meu``.
+
+Errors
+------
+
+A failing recording never stops the others. Once all are done,
+``on_error="raise"`` (default) raises a :class:`RuntimeError` listing every
+failure, and ``on_error="warn"`` emits a warning instead. Either way the
+function returns one record per recording:
 
 .. code-block:: python
 
-   batch.run(skip_existing=True)
+   records = meu.process(pipe, recordings, root, on_error="warn")
+   failed = [r for r in records if r["status"] == "failed"]
+   # {"source", "status": "ok" | "skipped" | "failed", "output", "error", "duration_s"}
 
-This skips files that have already been processed, allowing you to:
+Existing outputs
+----------------
 
-* Resume after interruption
-* Add new files to existing batch
-* Re-process only failed files
+By default an existing output is an error. ``skip_existing=True`` skips
+recordings that already have an output (to resume an interrupted run);
+``overwrite=True`` replaces them. :func:`meeg_utils.io.existing_derivatives`
+lists the outputs of one recording.
 
 Logging
 -------
 
-Enable logging to file:
-
 .. code-block:: python
 
-   batch.run(
-       save_logs=True,
-       logging_level="INFO"  # or "DEBUG", "WARNING", "ERROR"
-   )
+   meu.setup_logging("INFO", log_file="bids/derivatives/meu/logs/process.log")
 
-This creates a log file: ``output_dir/batch_preprocessing.log``
-
-Control logging verbosity:
-
-* ``"DEBUG"``: Detailed information
-* ``"INFO"``: General progress (default)
-* ``"WARNING"``: Only warnings and errors
-* ``"ERROR"``: Only errors
-
-Input Path Types
------------------
-
-Multiple path types are supported:
-
-BIDS Paths
-~~~~~~~~~~
-
-.. code-block:: python
-
-   from mne_bids import BIDSPath
-
-   bids_paths = [
-       BIDSPath(subject="01", session="01", task="rest",
-                datatype="eeg", root="/data/bids"),
-       BIDSPath(subject="02", session="01", task="rest",
-                datatype="eeg", root="/data/bids"),
-   ]
-
-String Paths
-~~~~~~~~~~~~
-
-.. code-block:: python
-
-   string_paths = [
-       "/data/subject01_eeg.fif",
-       "/data/subject02_eeg.fif",
-   ]
-
-Path Objects
-~~~~~~~~~~~~
-
-.. code-block:: python
-
-   from pathlib import Path
-
-   path_objects = [
-       Path("/data/subject01_eeg.fif"),
-       Path("/data/subject02_eeg.fif"),
-   ]
-
-Mixed Types
-~~~~~~~~~~~
-
-.. code-block:: python
-
-   mixed_paths = [
-       bids_paths[0],           # BIDSPath
-       "/data/subject02.fif",   # string
-       Path("/data/subject03.fif"),  # Path
-   ]
-
-   batch = BatchPreprocessingPipeline(input_paths=mixed_paths)
-
-Error Handling
---------------
-
-Batch processing continues even if individual files fail:
-
-.. code-block:: python
-
-   # Include an invalid path
-   paths_with_invalid = bids_paths + [
-       BIDSPath(subject="99", session="99", task="nonexistent",
-                datatype="eeg", root="/nonexistent")
-   ]
-
-   batch = BatchPreprocessingPipeline(
-       input_paths=paths_with_invalid,
-       output_dir="/path/to/output"
-   )
-
-   # Processing continues for valid files
-   batch.run()
-
-Check logs to see which files failed and why.
-
-Output Organization
--------------------
-
-BIDS Structure
-~~~~~~~~~~~~~~
-
-Output preserves BIDS directory structure:
-
-.. code-block:: text
-
-   output_dir/
-   ├── sub-01/
-   │   └── ses-01/
-   │       └── eeg/
-   │           ├── sub-01_ses-01_task-rest_preproc_eeg.fif
-   │           └── sub-01_ses-01_task-rest_bad_channels.tsv
-   ├── sub-02/
-   │   └── ses-01/
-   │       └── eeg/
-   │           ├── sub-02_ses-01_task-rest_preproc_eeg.fif
-   │           └── sub-02_ses-01_task-rest_bad_channels.tsv
-   └── batch_preprocessing.log
-
-Custom Output
-~~~~~~~~~~~~~
-
-For non-BIDS paths:
-
-.. code-block:: text
-
-   output_dir/
-   ├── subject01_preproc_eeg.fif
-   ├── subject02_preproc_eeg.fif
-   └── batch_preprocessing.log
-
-Performance Tips
-----------------
-
-Optimal n_jobs
-~~~~~~~~~~~~~~
-
-.. code-block:: python
-
-   import multiprocessing
-
-   # Leave 1 core free for system
-   n_jobs = max(1, multiprocessing.cpu_count() - 1)
-
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=n_jobs
-   )
-
-Memory Considerations
-~~~~~~~~~~~~~~~~~~~~~
-
-Each worker loads one dataset into memory. If datasets are large:
-
-.. code-block:: python
-
-   # Reduce n_jobs to avoid memory issues
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir="/path/to/output",
-       n_jobs=2  # Use fewer workers for large datasets
-   )
-
-Progress Monitoring
-~~~~~~~~~~~~~~~~~~~
-
-Monitor progress in real-time:
-
-.. code-block:: python
-
-   batch.run(
-       save_logs=True,
-       logging_level="INFO"
-   )
-
-   # Watch log file in another terminal
-   # tail -f output_dir/batch_preprocessing.log
-
-Example: Large Study
---------------------
-
-Complete example for processing a large study:
-
-.. code-block:: python
-
-   from meeg_utils.preprocessing import BatchPreprocessingPipeline
-   from mne_bids import BIDSPath
-   import multiprocessing
-
-   # Define study parameters
-   bids_root = "/data/my_study/bids"
-   output_dir = "/data/my_study/derivatives/meeg-utils"
-   subjects = [f"{i:02d}" for i in range(1, 101)]  # 100 subjects
-
-   # Create BIDSPaths for all subjects
-   bids_paths = [
-       BIDSPath(
-           subject=sub,
-           session="01",
-           task="task",
-           datatype="eeg",
-           root=bids_root
-       )
-       for sub in subjects
-   ]
-
-   # Configure batch processing
-   n_jobs = max(1, multiprocessing.cpu_count() - 1)
-
-   batch = BatchPreprocessingPipeline(
-       input_paths=bids_paths,
-       output_dir=output_dir,
-       n_jobs=n_jobs,
-       random_state=42  # For reproducibility
-   )
-
-   # Run with standard parameters
-   batch.run(
-       filter_params={
-           "highpass": 0.5,
-           "lowpass": 50.0,
-           "sfreq": 250.0
-       },
-       detect_bad_channels=True,
-       remove_line_noise=True,
-       apply_ica=True,
-       ica_params={"n_components": 20},
-       save_intermediate=True,
-       skip_existing=True,  # Resume if interrupted
-       save_logs=True,
-       logging_level="INFO"
-   )
-
-   print("Batch processing complete!")
-   print(f"Results saved to: {output_dir}")
-   print(f"Log file: {output_dir}/batch_preprocessing.log")
+Failures are logged with their full traceback.

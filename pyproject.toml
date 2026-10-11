@@ -1,7 +1,7 @@
 [project]
 name = "meeg-utils"
-version = "0.1.7"
-description = "A Python-based MEEG processing toolkit primarily based on MNE-Python."
+version = "0.2.0"
+description = "MEG and EEG quality control, preprocessing and analysis built on MNE-Python."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
@@ -19,14 +19,21 @@ classifiers = [
     "Topic :: Scientific/Engineering",
 ]
 dependencies = [
+    "joblib>=1.3",
     "loguru>=0.7.3",
-    "meegkit>=0.1.9",
-    "mne>=1.11.0",
-    "mne-bids>=0.18.0",
-    "mne-icalabel>=0.8.1",
+    "mne>=1.13.2",
+    "mne-denoise[mne]>=0.0.3,<0.1",
+    "mne-bids>=0.20.0",
+    "mne-icalabel>=0.10.0",
     "onnxruntime>=1.24.2",
-    "pyprep>=0.6.0",
+    "pyprep>=0.9.0",
+    "pyyaml>=6.0",
+    "scikit-learn>=1.5",
+    "autoreject>=0.5.1",
 ]
+
+[project.scripts]
+meu = "meeg_utils.cli:main"
 
 [dependency-groups]
 dev = [
@@ -34,7 +41,6 @@ dev = [
     "pybv>=0.7.6",
     "pytest>=9.0.2",
     "pytest-cov>=7.0.0",
-    "pytest-mock>=3.15.1",
     # Code quality
     "ruff>=0.8.0",
     "mypy>=1.14.0",
@@ -46,6 +52,8 @@ dev = [
     "pydata-sphinx-theme>=0.16.1",
     "sphinx-copybutton>=0.5.2",
     "myst-parser>=4.0.0",
+    "pandas>=3.0.6",
+    "sphinx-gallery>=0.19",
 ]
 
 [build-system]
@@ -139,6 +147,8 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/**/*" = ["ARG", "PLR2004"]
+# sphinx-gallery shows the value of a block's last expression
+"docs/tutorials/*" = ["B018"]
 "__init__.py" = ["F401"]
 
 [tool.ruff.format]
@@ -166,8 +176,13 @@ module = [
     "mne.*",
     "mne_bids.*",
     "mne_icalabel.*",
-    "meegkit.*",
+    "pandas.*",
+    "mne_denoise.*",
     "pyprep.*",
+    "autoreject.*",
+    "joblib.*",
+    "sklearn.*",
+    "yaml.*",
 ]
 ignore_missing_imports = true
 

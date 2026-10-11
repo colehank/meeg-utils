@@ -59,7 +59,7 @@ Running Tests
    uv run pytest
 
    # Run specific test file
-   uv run pytest tests/test_preprocessing/test_pipeline.py
+   uv run pytest tests/test_steps/test_steps.py
 
    # Run with coverage
    uv run pytest --cov=src/meeg_utils --cov-report=html
@@ -189,7 +189,7 @@ Use NumPy-style docstrings:
        highpass: float = 0.1,
        lowpass: float = 100.0,
    ) -> BaseRaw:
-       \"\"\"Process MEG/EEG data with filtering.
+       """Process MEG/EEG data with filtering.
 
        Parameters
        ----------
@@ -208,16 +208,39 @@ Use NumPy-style docstrings:
        Examples
        --------
        >>> raw_filtered = process_data(raw, highpass=1.0, lowpass=50.0)
-       \"\"\"
+       """
 
 Testing Guidelines
 ~~~~~~~~~~~~~~~~~~
 
-* One test file per source file
+* Run the real scientific code, without mocks, on simulated data whose
+  right answer is known (see :doc:`testing`)
+* Every new step passes :func:`meeg_utils.testing.check_step`, every new
+  QC check :func:`meeg_utils.testing.check_check`
 * Use descriptive test names: ``test_<what>_<condition>``
 * Use fixtures for common test data
-* Mock expensive operations (trust library implementations)
-* Aim for >80% code coverage
+* Document the source of every default parameter (a paper, or the default
+  of the library it wraps); where there is none, say so
+
+Tutorials
+---------
+
+The tutorials in ``docs/tutorials/`` are Python scripts that
+`sphinx-gallery <https://sphinx-gallery.github.io>`_ runs when the
+documentation is built: text goes in ``# %%`` comment blocks (reST), and
+every figure a block draws appears below it. Each page can be downloaded
+as a script or a Jupyter notebook.
+
+- Use MNE's ``sample`` dataset (``mne.datasets.sample.data_path()``), so the
+  results are real and the tutorials need no other downloads.
+- Keep each tutorial under about five minutes; the documentation build
+  runs all of them (about 15 minutes in total).
+- Run one on its own while writing it:
+  ``MPLBACKEND=Agg uv run python docs/tutorials/plot_10_quality_control.py``.
+- ``# sphinx_gallery_thumbnail_number = N`` picks the gallery thumbnail.
+
+Build the documentation with ``cd docs && uv run make html``; a tutorial
+that raises stops the build.
 
 Reporting Issues
 ----------------

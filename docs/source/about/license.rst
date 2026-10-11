@@ -34,8 +34,12 @@ This project depends on several open-source packages:
 * `MNE-Python <https://mne.tools/>`_ - BSD 3-Clause License
 * `MNE-BIDS <https://mne.tools/mne-bids/>`_ - BSD 3-Clause License
 * `PyPREP <https://github.com/sappelhoff/pyprep>`_ - MIT License
-* `meegkit <https://github.com/nbara/python-meegkit>`_ - BSD 3-Clause License
+* `mne-denoise <https://github.com/mne-tools/mne-denoise>`_ - BSD 3-Clause License
 * `MNE-ICALabel <https://github.com/mne-tools/mne-icalabel>`_ - BSD 3-Clause License
 * `loguru <https://github.com/Delgan/loguru>`_ - MIT License
+* `scikit-learn <https://scikit-learn.org>`_ - BSD 3-Clause License
+* `joblib <https://joblib.readthedocs.io>`_ - BSD 3-Clause License
+* `PyYAML <https://pyyaml.org>`_ - MIT License
+* `ONNX Runtime <https://onnxruntime.ai>`_ - MIT License
 
 See each project's repository for their full license terms.

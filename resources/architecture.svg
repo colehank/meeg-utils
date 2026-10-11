@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 520" width="1200" height="520" role="img" aria-labelledby="title desc">
+<title id="title">meeg-utils modules</title>
+<desc id="desc">The modules of meeg-utils: io, qc, steps, Pipeline, presets, epochs, Dataset, report and the meu command, built on MNE-Python and its ecosystem.</desc>
+<rect width="1200" height="520" fill="white"/>
+<rect x="24" y="24" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="48" y="60" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.io</text>
+<text x="48" y="94" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Read and write</text>
+<text x="48" y="124" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">read · detect_system · save_derivative</text>
+<rect x="413" y="24" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="437" y="60" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.qc</text>
+<text x="437" y="94" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Acquisition QC</text>
+<text x="437" y="124" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">inspect · inspect_dataset · 16 checks</text>
+<rect x="802" y="24" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="826" y="60" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.steps</text>
+<text x="826" y="94" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Steps</text>
+<text x="826" y="124" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">Filter · LineNoise · BadChannels · Maxwell · ICA · …</text>
+<rect x="24" y="168" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="48" y="204" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.Pipeline</text>
+<text x="48" y="238" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Pipelines</text>
+<text x="48" y="268" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">fit · transform · set_params · to_yaml</text>
+<rect x="413" y="168" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="437" y="204" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.presets</text>
+<text x="437" y="238" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Presets</text>
+<text x="437" y="268" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">eeg-erp · eeg-rest · meg-erp · meg-rest · had-meeg</text>
+<rect x="802" y="168" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="826" y="204" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.epochs</text>
+<text x="826" y="238" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Combining runs</text>
+<text x="826" y="268" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">combine: channels · events · head position</text>
+<rect x="24" y="312" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="48" y="348" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.Dataset</text>
+<text x="48" y="382" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">BIDS datasets</text>
+<text x="48" y="412" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">Dataset · process_dataset · process</text>
+<rect x="413" y="312" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="437" y="348" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu.report</text>
+<text x="437" y="382" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Reports</text>
+<text x="437" y="412" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">build · from_derivative · summarize</text>
+<rect x="802" y="312" width="373" height="128" rx="16" fill="#f5f5f7"/>
+<text x="826" y="348" font-family="'SFMono-Regular', Menlo, Consolas, 'DejaVu Sans Mono', monospace" font-size="14" font-weight="400" fill="#0a66d6" text-anchor="start">meu</text>
+<text x="826" y="382" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="21" font-weight="600" fill="#1d1d1f" text-anchor="start">Command line</text>
+<text x="826" y="412" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="start">meu qc · run · preset · report</text>
+<path d="M24,464 H1176" stroke="#d2d2d7" stroke-width="1"/>
+<text x="600.0" y="494" font-family="'Helvetica Neue', Helvetica, Arial, Inter, sans-serif" font-size="13" font-weight="400" fill="#6e6e73" text-anchor="middle">Built on MNE-Python · MNE-BIDS · mne-denoise · PyPREP · mne-icalabel · autoreject · scikit-learn</text>
+</svg>
