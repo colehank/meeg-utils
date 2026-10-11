@@ -247,7 +247,7 @@ class TestReportCommand:
         fname = derivatives / "rec0_raw_desc-preproc_eeg.fif"
         out = tmp_path / "rec0.html"
         assert main(["report", str(fname), "--out", str(out), "-q"]) == 0
-        text = out.read_text()
+        text = out.read_text(encoding="utf-8")
         assert "segments: metrics" in text and "BadSegments" in text
 
     def test_errors(self, tmp_path):

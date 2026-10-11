@@ -72,17 +72,17 @@ def test_process_dataset(eeg_bids, tmp_path):
 
     assert len(result.outputs("preprocessing")) == 4
     assert len(result.outputs("epochs")) == 3
-    failed = {(r["stage"], r["source"].split("/")[-1].split("_eeg")[0]) for r in result.failed}
+    failed = {(r["stage"], Path(r["source"]).name.split("_eeg")[0]) for r in result.failed}
     assert failed == {
         ("epochs", "sub-02_task-oddball_run-02"),  # no events
         ("combine", "sub-02_task-oddball"),  # a run is missing
     }
     combined = result.outputs("combine")
-    assert [p.split("/")[-1] for p in combined] == ["sub-01_task-oddball_desc-epochs_epo.fif"]
+    assert [Path(p).name for p in combined] == ["sub-01_task-oddball_desc-epochs_epo.fif"]
     run_epochs = [mne.read_epochs(f, verbose=False) for f in sorted(result.outputs("epochs"))[:2]]
     all_epochs = mne.read_epochs(combined[0], verbose=False)
     assert len(all_epochs) == sum(len(e) for e in run_epochs)
-    sidecar = json.loads(Path(combined[0].replace(".fif", ".json")).read_text())
+    sidecar = json.loads(Path(combined[0]).with_suffix(".json").read_text())
     assert len(sidecar["Sources"]) == 2 and sidecar["MeegUtils"]["combined_runs"] == ["01", "02"]
 
     log = result.to_csv(tmp_path / "log.csv")
